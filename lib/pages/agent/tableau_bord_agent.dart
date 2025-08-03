@@ -71,6 +71,31 @@ class _TableauBordAgentPageState extends State<TableauBordAgentPage> {
     }
   }
   
+  // Affiche une boîte de dialogue de confirmation avant de terminer le service
+  Future<void> _confirmerEtTerminerService() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmer la fin du service'),
+        content: const Text('Es-tu sûr de vouloir terminer le service pour ce client ?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Terminer'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await _terminerService();
+    }
+  }
+
   // Méthode pour terminer le service du client actuel
   Future<void> _terminerService() async {
     setState(() => _isLoading = true);
@@ -227,17 +252,28 @@ class _TableauBordAgentPageState extends State<TableauBordAgentPage> {
                                 .orderBy('createdAt')
                                 .snapshots(),
                             builder: (context, snapshot) {
+                              if (snapshot.hasError) {
+                                return Column(
+                                  children: [
+                                    const Icon(Icons.error, color: Colors.red, size: 40),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Erreur Firestore :\n${snapshot.error}\nIl manque probablement un index.\nMerci de contacter l\'administrateur.',
+                                      style: const TextStyle(color: Colors.red, fontSize: 14),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                );
+                              }
                               if (!snapshot.hasData) {
                                 return const CircularProgressIndicator();
                               }
-                              
                               if (snapshot.data!.docs.isEmpty) {
                                 return const Text(
                                   'Aucun client en cours',
                                   style: TextStyle(fontSize: 16, color: Colors.grey),
                                 );
                               }
-                              
                               final doc = snapshot.data!.docs.first;
                               return Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -251,12 +287,14 @@ class _TableauBordAgentPageState extends State<TableauBordAgentPage> {
                                     ),
                                   ),
                                   const SizedBox(height: 8),
-                                  Text('Service: ${doc['service'] ?? 'Non spécifié'}'),
+                                  Text('Client : ${doc['creatorEmail'] ?? doc['creatorId'] ?? 'Inconnu'}'),
+                                  const SizedBox(height: 8),
+                                  Text('Service: ${(doc.data() as Map<String, dynamic>)['service'] ?? 'Non spécifié'}'),
                                   const SizedBox(height: 16),
                                   SizedBox(
                                     width: double.infinity,
                                     child: ElevatedButton.icon(
-                                      onPressed: _isLoading ? null : _terminerService,
+                                      onPressed: _isLoading ? null : _confirmerEtTerminerService,
                                       icon: const Icon(Icons.check_circle),
                                       label: const Text('Terminer le service'),
                                       style: ElevatedButton.styleFrom(
@@ -297,17 +335,28 @@ class _TableauBordAgentPageState extends State<TableauBordAgentPage> {
                                 .limit(1)
                                 .snapshots(),
                             builder: (context, snapshot) {
+                              if (snapshot.hasError) {
+                                return Column(
+                                  children: [
+                                    const Icon(Icons.error, color: Colors.red, size: 40),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Erreur Firestore :\n${snapshot.error}\nIl manque probablement un index.\nMerci de contacter l\'administrateur.',
+                                      style: const TextStyle(color: Colors.red, fontSize: 14),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                );
+                              }
                               if (!snapshot.hasData) {
                                 return const CircularProgressIndicator();
                               }
-                              
                               if (snapshot.data!.docs.isEmpty) {
                                 return const Text(
                                   'Aucun client en attente',
                                   style: TextStyle(fontSize: 16, color: Colors.grey),
                                 );
                               }
-                              
                               final doc = snapshot.data!.docs.first;
                               return Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -321,7 +370,7 @@ class _TableauBordAgentPageState extends State<TableauBordAgentPage> {
                                     ),
                                   ),
                                   const SizedBox(height: 8),
-                                  Text('Service: ${doc['service'] ?? 'Non spécifié'}'),
+                                  Text('Service: ${(doc.data() as Map<String, dynamic>)['service'] ?? 'Non spécifié'}'),
                                   const SizedBox(height: 16),
                                   SizedBox(
                                     width: double.infinity,
@@ -346,20 +395,7 @@ class _TableauBordAgentPageState extends State<TableauBordAgentPage> {
                   ),
                   const SizedBox(height: 24),
                   
-                  // Bouton pour gérer la file complète
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () => Navigator.pushNamed(context, '/gestion_file'),
-                      icon: const Icon(Icons.list),
-                      label: const Text('Voir toute la file'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: ConstantesCouleurs.orange,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
+
                 ],
               ),
             ),
