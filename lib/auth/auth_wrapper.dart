@@ -15,30 +15,49 @@ class AuthWrapper extends StatelessWidget {
     // C'est la méthode la plus fiable pour reconstruire l'UI lors d'un changement d'état.
     return Consumer<AuthServiceV2>(
       builder: (context, authService, _) {
-        print('AuthWrapper: Reconstruction du widget - Initializing: ${authService.isInitializing}');
+        print('AuthWrapper: 🔄 Reconstruction - Initializing: ${authService.isInitializing}, User: ${authService.currentUser?.email ?? "null"}');
 
+        // Timeout pour éviter de rester bloqué en mode initializing
         if (authService.isInitializing) {
+          // Après 3 secondes, forcer l'affichage de la page de connexion
+          Future.delayed(const Duration(seconds: 3), () {
+            if (authService.isInitializing && authService.currentUser == null) {
+              print('AuthWrapper: ⚠️ Timeout initialisation - Force connexion page');
+              // Cette ligne va forcer une reconstruction
+              if (context.mounted) {
+                Navigator.pushNamedAndRemoveUntil(context, '/connexion', (route) => false);
+              }
+            }
+          });
+          
           return const Scaffold(
             body: Center(
-              child: CircularProgressIndicator(),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Initialisation...'),
+                ],
+              ),
             ),
           );
         }
 
         final user = authService.currentUser;
-        print('AuthWrapper: Utilisateur: ${user?.email ?? "null"}, Rôle: ${user?.role ?? "null"}');
+        print('AuthWrapper: 👤 Utilisateur: ${user?.email ?? "null"}, Rôle: ${user?.role ?? "null"}');
 
         if (user == null) {
-          print('AuthWrapper: Aucun utilisateur connecté -> Page de connexion');
+          print('AuthWrapper: ❌ Aucun utilisateur connecté -> Page de connexion');
           return const ConnexionPage();
         }
 
         // Utilisateur connecté -> redirection selon le rôle
         if (user.role == 'agent') {
-          print('AuthWrapper: Utilisateur agent détecté -> Tableau de bord');
+          print('AuthWrapper: 👨‍💼 Utilisateur agent détecté -> Tableau de bord');
           return const TableauBordAgentPage();
         } else {
-          print('AuthWrapper: Utilisateur client détecté -> Accueil');
+          print('AuthWrapper: 👤 Utilisateur client détecté -> Accueil');
           return const AccueilPage();
         }
       },

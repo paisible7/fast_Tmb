@@ -32,15 +32,38 @@ class _ConnexionPageState extends State<ConnexionPage> {
     final authService = Provider.of<AuthServiceV2>(context, listen: false);
 
     try {
-      await authService.signIn(
+      final user = await authService.signIn(
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
+      
+      if (user != null) {
+        print('ConnexionPage: Connexion réussie pour ${user.email} (${user.role})');
+        
+        // Navigation forcée selon le rôle au lieu d'attendre AuthWrapper
+        if (mounted) {
+          if (user.role == 'agent') {
+            Navigator.pushNamedAndRemoveUntil(context, '/tableau_bord_agent', (route) => false);
+          } else {
+            Navigator.pushNamedAndRemoveUntil(context, '/accueil', (route) => false);
+          }
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Échec de la connexion. Aucun utilisateur retourné.'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+      }
     } catch (e) {
+      print('ConnexionPage: Erreur de connexion: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Échec de la connexion. Vérifiez vos identifiants.'),
+            content: Text('Échec de la connexion: ${e.toString()}'),
             backgroundColor: Colors.redAccent,
           ),
         );
