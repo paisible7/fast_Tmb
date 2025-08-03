@@ -54,20 +54,64 @@ class _ParametresPageState extends State<ParametresPage> {
           ListTile(
             leading: const Icon(Icons.exit_to_app, color: Colors.redAccent),
             title: const Text('Déconnexion'),
-            onTap: () async {
-              await Provider.of<AuthServiceV2>(context, listen: false).signOut();
-              if (mounted){
-              Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (context) => const ConnexionPage()),
-              (route) => false,
-              );}
-              //await authService.signOut();
-              //Navigator.pushNamedAndRemoveUntil(context, '/connexion', (route) => false);
+            onTap: () {
+              _showLogoutConfirmationDialog();
             },
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _showLogoutConfirmationDialog() async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            'Déconnexion',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+          ),
+          content: const Text('Êtes-vous sûr de vouloir vous déconnecter ?'),
+          actionsAlignment: MainAxisAlignment.spaceEvenly,
+          actions: <Widget>[
+            TextButton(
+              child: const Text(
+                'Annuler',
+                style: TextStyle(color: Colors.grey, fontSize: 16),
+              ),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+              child: const Text('Confirmer', style: TextStyle(fontSize: 16, color: Colors.white)),
+              onPressed: () async {
+                Navigator.of(dialogContext).pop(); // Ferme la dialog
+                await Provider.of<AuthServiceV2>(context, listen: false).signOut();
+                if (mounted) {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ConnexionPage()),
+                    (route) => false,
+                  );
+                }
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 }

@@ -23,30 +23,62 @@ class FirestoreService {
         Duration(minutes: count * _dureeMoyenneTraitement.inMinutes));
   }
 
-  /// Ajoute un nouveau ticket pour l'utilisateur connecté
+  /// Ajoute un nouveau ticket pour l'utilisateur connecté de façon sécurisée (transaction Firestore)
   Future<void> ajouterTicket() async {
     final user = _auth.currentUser;
     if (user == null) throw Exception('Utilisateur non connecté');
 
-    // TODO: Ajouter une vérification pour s'assurer que l'utilisateur n'a pas déjà un ticket actif.
-
-    final query = await _ticketsCollection
-        .orderBy('numero', descending: true)
+    // Vérifier si l'utilisateur a déjà un ticket actif (en_attente ou en_cours)
+    final existing = await _ticketsCollection
+        .where('creatorId', isEqualTo: user.uid)
+        .where('status', whereIn: ['en_attente', 'en_cours'])
         .limit(1)
         .get();
-    int nextNumero = 1;
-    if (query.docs.isNotEmpty) {
-      final data = query.docs.first.data() as Map<String, dynamic>;
-      nextNumero = (data['numero'] as int) + 1;
+    if (existing.docs.isNotEmpty) {
+      throw Exception('Vous avez déjà un ticket actif.');
     }
 
-    await _ticketsCollection.add({
-      'creatorId': user.uid, // Ajout de l'ID du créateur
-      'creatorEmail': user.email, // Optionnel: stocker l'email pour un accès facile
-      'createdAt': FieldValue.serverTimestamp(),
-      'status': 'en_attente',
-      'numero': nextNumero,
+    final metaRef = _db.collection('meta').doc('compteur_tickets');
+
+    await _db.runTransaction((transaction) async {
+      final metaSnap = await transaction.get(metaRef);
+      int lastNum = metaSnap.exists ? (metaSnap.data()?['last'] ?? 0) as int : 0;
+      int newNum = lastNum + 1;
+      transaction.set(metaRef, {'last': newNum});
+      transaction.set(_ticketsCollection.doc(), {
+        'creatorId': user.uid,
+        'creatorEmail': user.email,
+        'createdAt': FieldValue.serverTimestamp(),
+        'status': 'en_attente',
+        'numero': newNum,
+      });
     });
+  }
+
+  /// Récupère le ticket actif (en attente ou en cours) de l'utilisateur connecté
+  /// Donne la position de l'utilisateur dans la file d'attente en temps réel.
+  Stream<int> maPositionEnTempsReelStream(DocumentSnapshot? monTicket) {
+    if (monTicket == null || !monTicket.exists) {
+      return Stream.value(0);
+    }
+
+    final ticketData = monTicket.data() as Map<String, dynamic>?;
+    if (ticketData == null) return Stream.value(0);
+
+    final ticketStatus = ticketData['status'];
+    final ticketCreatedAt = ticketData['createdAt'];
+
+    // Si l'utilisateur n'est plus en attente, sa position est 0.
+    if (ticketStatus != 'en_attente' || ticketCreatedAt == null) {
+      return Stream.value(0);
+    }
+
+    // On écoute le nombre de tickets créés avant celui de l'utilisateur.
+    return _ticketsCollection
+        .where('status', isEqualTo: 'en_attente')
+        .where('createdAt', isLessThan: ticketCreatedAt)
+        .snapshots()
+        .map((snap) => snap.docs.length + 1); // +1 pour une position 1-based
   }
 
   /// Récupère le ticket actif (en attente ou en cours) de l'utilisateur connecté
@@ -91,6 +123,20 @@ class FirestoreService {
       return sum + end.difference(start).inMinutes;
     });
     return total / snap.docs.length;
+  }
+
+  /// Historique quotidien des tickets traités (7 jours par défaut)
+  /// Récupère le flux de notifications pour l'utilisateur connecté.
+  Stream<QuerySnapshot> getNotificationsStream() {
+    final user = _auth.currentUser;
+    if (user == null) return Stream.empty();
+
+    return _db
+        .collection('users')
+        .doc(user.uid)
+        .collection('notifications')
+        .orderBy('timestamp', descending: true)
+        .snapshots();
   }
 
   /// Historique quotidien des tickets traités (7 jours par défaut)
