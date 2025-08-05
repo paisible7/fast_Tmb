@@ -16,6 +16,7 @@ import 'package:fl/pages/client/parametres.dart';
 import 'package:fl/pages/connexion_page.dart';
 import 'package:fl/pages/agent/tableau_bord_agent.dart';
 import 'package:fl/pages/agent/statistiques_agent.dart';
+import 'package:fl/pages/inscription_page.dart';
 
 import 'package:fl/utils/constantes_couleurs.dart';
 
@@ -74,6 +75,7 @@ class FastApp extends StatelessWidget {
           '/notifications': (_) => const NotificationsPage(),
           '/parametres': (_) => const ParametresPage(),
           '/connexion': (_) => const ConnexionPage(),
+          '/inscription': (_) => const InscriptionPage(),
           '/tableau_bord_agent': (_) => const TableauBordAgentPage(),
           '/statistiques_agent': (_) => const StatistiquesAgentPage(),
           },

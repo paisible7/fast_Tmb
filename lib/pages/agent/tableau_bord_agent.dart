@@ -19,58 +19,42 @@ class TableauBordAgentPage extends StatefulWidget {
 class _TableauBordAgentPageState extends State<TableauBordAgentPage> {
   bool _isLoading = false;
 
-  // Méthode pour appeler le prochain client
+  // Méthode pour appeler le prochain client via FirestoreService
   Future<void> _appellerProchainClient() async {
     setState(() => _isLoading = true);
-    
     try {
       final firestoreService = Provider.of<FirestoreService>(context, listen: false);
-      final authService = Provider.of<AuthServiceV2>(context, listen: false);
-      
-      // Récupérer le prochain ticket en attente
-      final ticketsSnapshot = await FirebaseFirestore.instance
-          .collection('tickets')
-          .where('status', isEqualTo: 'en_attente')
-          .orderBy('createdAt')
-          .limit(1)
-          .get();
-      
-      if (ticketsSnapshot.docs.isNotEmpty) {
-        final ticketDoc = ticketsSnapshot.docs.first;
-        
-        // Mettre à jour le statut à 'en_cours' et assigner l'agent
-        await ticketDoc.reference.update({
-          'status': 'en_cours',
-          'agentId': authService.currentUser?.uid,
-          'appelleAt': FieldValue.serverTimestamp(),
-        });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Client #${ticketDoc['numero']} appelé avec succès'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Aucun client en attente'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
+      await firestoreService.appelerProchainClient();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Client appelé avec succès'), backgroundColor: Colors.green),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur : $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
       );
     } finally {
       setState(() => _isLoading = false);
     }
   }
-  
+
+  // Méthode pour marquer le client en cours comme absent via FirestoreService
+  Future<void> _marquerAbsent() async {
+    setState(() => _isLoading = true);
+    try {
+      final firestoreService = Provider.of<FirestoreService>(context, listen: false);
+      await firestoreService.marquerClientAbsent();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Client marqué comme absent'), backgroundColor: Colors.orange),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
   // Affiche une boîte de dialogue de confirmation avant de terminer le service
   Future<void> _confirmerEtTerminerService() async {
     final confirmed = await showDialog<bool>(
@@ -96,50 +80,18 @@ class _TableauBordAgentPageState extends State<TableauBordAgentPage> {
     }
   }
 
-  // Méthode pour terminer le service du client actuel
+  // Méthode pour terminer le service du client actuel via FirestoreService
   Future<void> _terminerService() async {
     setState(() => _isLoading = true);
-    
     try {
-      final authService = Provider.of<AuthServiceV2>(context, listen: false);
-      
-      // Récupérer le ticket en cours de cet agent
-      final ticketsSnapshot = await FirebaseFirestore.instance
-          .collection('tickets')
-          .where('status', isEqualTo: 'en_cours')
-          .where('agentId', isEqualTo: authService.currentUser?.uid)
-          .limit(1)
-          .get();
-      
-      if (ticketsSnapshot.docs.isNotEmpty) {
-        final ticketDoc = ticketsSnapshot.docs.first;
-        
-        // Mettre à jour le statut à 'servi'
-        await ticketDoc.reference.update({
-          'status': 'servi',
-          'serviAt': FieldValue.serverTimestamp(),
-        });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Service terminé pour le client #${ticketDoc['numero']}'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Aucun client en cours de service'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
+      final firestoreService = Provider.of<FirestoreService>(context, listen: false);
+      await firestoreService.terminerServiceClient();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Service terminé pour le client'), backgroundColor: Colors.green),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur : $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
       );
     } finally {
       setState(() => _isLoading = false);
@@ -291,18 +243,34 @@ class _TableauBordAgentPageState extends State<TableauBordAgentPage> {
                                   const SizedBox(height: 8),
                                   Text('Service: ${(doc.data() as Map<String, dynamic>)['service'] ?? 'Non spécifié'}'),
                                   const SizedBox(height: 16),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton.icon(
-                                      onPressed: _isLoading ? null : _confirmerEtTerminerService,
-                                      icon: const Icon(Icons.check_circle),
-                                      label: const Text('Terminer le service'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.green,
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: ElevatedButton.icon(
+                                          onPressed: _isLoading ? null : _confirmerEtTerminerService,
+                                          icon: const Icon(Icons.check_circle),
+                                          label: const Text('Terminer le service'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.green,
+                                            foregroundColor: Colors.white,
+                                            padding: const EdgeInsets.symmetric(vertical: 12),
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: ElevatedButton.icon(
+                                          onPressed: _isLoading ? null : _marquerAbsent,
+                                          icon: const Icon(Icons.person_off),
+                                          label: const Text('Marquer Absent'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.orange,
+                                            foregroundColor: Colors.white,
+                                            padding: const EdgeInsets.symmetric(vertical: 12),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               );

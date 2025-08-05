@@ -1,5 +1,34 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'dart:io';
+
+/// Handler global pour notifications FCM en background
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // Affiche une notification locale même en background
+  final notif = message.notification;
+  if (notif == null) return;
+  final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  const androidDetails = AndroidNotificationDetails(
+    'fast_channel',
+    'Notifications Fast',
+    channelDescription: 'Notifications de l’app Fast',
+    importance: Importance.max,
+    priority: Priority.high,
+    icon: '@mipmap/ic_launcher',
+  );
+  const iOSDetails = DarwinNotificationDetails();
+  final details = NotificationDetails(
+    android: androidDetails,
+    iOS: iOSDetails,
+  );
+  await flutterLocalNotificationsPlugin.show(
+    notif.hashCode,
+    notif.title,
+    notif.body,
+    details,
+    payload: message.data['payload'] as String? ?? '',
+  );
+}
 
 class NotificationService {
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
@@ -23,6 +52,8 @@ class NotificationService {
       onDidReceiveNotificationResponse: (payload) {},
     );
     await FirebaseMessaging.instance.requestPermission();
+    // Handler background (doit être appelé au tout début du main)
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
       'fast_channel',
       'Notifications Fast',

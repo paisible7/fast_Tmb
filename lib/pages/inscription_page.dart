@@ -1,77 +1,74 @@
-// lib/pages/connexion_page.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl/services/auth_service_v2.dart';
 import 'package:fl/utils/constantes_couleurs.dart';
 
-class ConnexionPage extends StatefulWidget {
-  const ConnexionPage({Key? key}) : super(key: key);
+class InscriptionPage extends StatefulWidget {
+  const InscriptionPage({Key? key}) : super(key: key);
 
   @override
-  State<ConnexionPage> createState() => _ConnexionPageState();
+  State<InscriptionPage> createState() => _InscriptionPageState();
 }
 
-class _ConnexionPageState extends State<ConnexionPage> {
+class _InscriptionPageState extends State<InscriptionPage> {
   final _formKey = GlobalKey<FormState>();
+  final _prenomController = TextEditingController();
+  final _nomController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
 
   @override
   void dispose() {
+    _prenomController.dispose();
+    _nomController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  Future<void> _signIn() async {
+  Future<void> _signUp() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-
     setState(() => _isLoading = true);
-
     final authService = Provider.of<AuthServiceV2>(context, listen: false);
-
     try {
-      final user = await authService.signIn(
+      final user = await authService.signUp(
         _emailController.text.trim(),
         _passwordController.text.trim(),
+        prenom: _prenomController.text.trim(),
+        nom: _nomController.text.trim(),
       );
-      
       if (user != null) {
-        print('ConnexionPage: Connexion réussie pour ${user.email} (${user.role})');
-        
-        // Navigation forcée selon le rôle au lieu d'attendre AuthWrapper
         if (mounted) {
-          if (user.role == 'agent') {
-            Navigator.pushNamedAndRemoveUntil(context, '/tableau_bord_agent', (route) => false);
-          } else {
-            Navigator.pushNamedAndRemoveUntil(context, '/accueil', (route) => false);
-          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Inscription réussie !'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pushReplacementNamed(context, '/connexion');
         }
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Échec de la connexion. Aucun utilisateur retourné.'),
+              content: Text("Échec de l'inscription. Aucun utilisateur créé."),
               backgroundColor: Colors.redAccent,
             ),
           );
         }
       }
     } catch (e) {
-      print('ConnexionPage: Erreur de connexion: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Échec de la connexion: ${e.toString()}'),
+            content: Text("Erreur lors de l'inscription : ${e.toString()}"),
             backgroundColor: Colors.redAccent,
           ),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -87,10 +84,10 @@ class _ConnexionPageState extends State<ConnexionPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Icon(Icons.lock_outline, size: 80, color: ConstantesCouleurs.orange),
+                const Icon(Icons.person_add_alt_1, size: 80, color: ConstantesCouleurs.orange),
                 const SizedBox(height: 30),
                 Text(
-                  'Bienvenue',
+                  "Créer un compte",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 28,
@@ -108,6 +105,26 @@ class _ConnexionPageState extends State<ConnexionPage> {
                       key: _formKey,
                       child: Column(
                         children: [
+                          TextFormField(
+                            controller: _prenomController,
+                            decoration: InputDecoration(
+                              labelText: 'Prénom',
+                              prefixIcon: Icon(Icons.person_outline),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            validator: (val) => val!.isEmpty ? 'Veuillez entrer votre prénom' : null,
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _nomController,
+                            decoration: InputDecoration(
+                              labelText: 'Nom',
+                              prefixIcon: Icon(Icons.person_outline),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            validator: (val) => val!.isEmpty ? 'Veuillez entrer votre nom' : null,
+                          ),
+                          const SizedBox(height: 16),
                           TextFormField(
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
@@ -137,25 +154,20 @@ class _ConnexionPageState extends State<ConnexionPage> {
                 const SizedBox(height: 30),
                 _isLoading
                     ? const Center(child: CircularProgressIndicator())
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: ConstantesCouleurs.orange,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                            onPressed: _signIn,
-                            child: const Text('Se connecter', style: TextStyle(fontSize: 18, color: Colors.white)),
-                          ),
-                          const SizedBox(height: 16),
-                          TextButton(
-                            onPressed: () => Navigator.pushReplacementNamed(context, '/inscription'),
-                            child: const Text("Créer un compte"),
-                          ),
-                        ],
+                    : ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: ConstantesCouleurs.orange,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: _signUp,
+                        child: const Text("S'inscrire", style: TextStyle(fontSize: 18, color: Colors.white)),
                       ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () => Navigator.pushReplacementNamed(context, '/connexion'),
+                  child: const Text('Déjà un compte ? Se connecter'),
+                ),
               ],
             ),
           ),

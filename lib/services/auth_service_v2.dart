@@ -5,6 +5,31 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl/models/utilisateur.dart';
 
 class AuthServiceV2 with ChangeNotifier {
+  /// Inscription d'un nouvel utilisateur (client par défaut)
+  Future<Utilisateur?> signUp(String email, String password, {required String prenom, required String nom}) async {
+    try {
+      final credential = await _auth.createUserWithEmailAndPassword(email: email, password: password);
+      final user = credential.user;
+      if (user == null) return null;
+      // Création du profil Firestore (rôle client par défaut)
+      await _firestore.collection('utilisateurs').doc(user.uid).set({
+        'email': email,
+        'prenom': prenom,
+        'nom': nom,
+        'role': 'client',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      print('AuthServiceV2: Utilisateur inscrit et profil créé');
+      return Utilisateur(uid: user.uid, email: email, role: 'client');
+    } on FirebaseAuthException catch (e) {
+      print('AuthServiceV2: Erreur FirebaseAuth lors de l\'inscription: $e');
+      rethrow;
+    } catch (e) {
+      print('AuthServiceV2: Erreur lors de l\'inscription: $e');
+      rethrow;
+    }
+  }
+
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 

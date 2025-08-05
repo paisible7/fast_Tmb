@@ -125,12 +125,11 @@ class FirestoreService {
     return total / snap.docs.length;
   }
 
-  /// Historique quotidien des tickets traités (7 jours par défaut)
-  /// Récupère le flux de notifications pour l'utilisateur connecté.
+  /// Récupère le flux de notifications pour l'utilisateur connecté (agent ou client)
   Stream<QuerySnapshot> getNotificationsStream() {
     final user = _auth.currentUser;
     if (user == null) return Stream.empty();
-
+    // Notifications pour tous les rôles (client ou agent)
     return _db
         .collection('users')
         .doc(user.uid)
@@ -153,5 +152,67 @@ class FirestoreService {
       counts[key] = (counts[key] ?? 0) + 1;
     }
     return counts;
+  }
+
+  /// Passe le prochain ticket en attente à 'en_cours' et l'assigne à l'agent connecté
+  Future<void> appelerProchainClient() async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('Utilisateur non connecté');
+    // Chercher le prochain ticket en attente
+    final snap = await _ticketsCollection
+        .where('status', isEqualTo: 'en_attente')
+        .orderBy('createdAt')
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) {
+      throw Exception('Aucun client en attente');
+    }
+    final doc = snap.docs.first.reference;
+    await doc.update({
+      'status': 'en_cours',
+      'agentId': user.uid,
+      'agentEmail': user.email,
+      'startedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Marque le ticket en cours de l'agent comme 'absent'
+  Future<void> marquerClientAbsent() async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('Utilisateur non connecté');
+    // Chercher le ticket en cours de l'agent
+    final snap = await _ticketsCollection
+        .where('status', isEqualTo: 'en_cours')
+        .where('agentId', isEqualTo: user.uid)
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) {
+      throw Exception('Aucun client en cours à marquer absent');
+    }
+    final doc = snap.docs.first.reference;
+    await doc.update({
+      'status': 'absent',
+      'absentAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Termine le ticket en cours de l'agent (status 'servi')
+  Future<void> terminerServiceClient() async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('Utilisateur non connecté');
+    // Chercher le ticket en cours de l'agent
+    final snap = await _ticketsCollection
+        .where('status', isEqualTo: 'en_cours')
+        .where('agentId', isEqualTo: user.uid)
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) {
+      throw Exception('Aucun client en cours à terminer');
+    }
+    final doc = snap.docs.first.reference;
+    await doc.update({
+      'status': 'termine',
+      'treatedAt': FieldValue.serverTimestamp(),
+    });
   }
 }
