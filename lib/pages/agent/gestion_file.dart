@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:fl/services/firestore_service.dart';
-import 'package:fl/utils/constantes_couleurs.dart';
+import 'package:fast_tmb/services/firestore_service.dart';
+import 'package:fast_tmb/utils/constantes_couleurs.dart';
 
 class GestionFilePage extends StatefulWidget {
   const GestionFilePage({Key? key}) : super(key: key);

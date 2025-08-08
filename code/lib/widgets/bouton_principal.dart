@@ -1,6 +1,6 @@
 // widgets/bouton_principal.dart
 import 'package:flutter/material.dart';
-import 'package:fl/utils/constantes_couleurs.dart';
+import 'package:fast_tmb/utils/constantes_couleurs.dart';
 
 class BoutonPrincipal extends StatelessWidget {
   final String text;

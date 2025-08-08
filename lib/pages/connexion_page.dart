@@ -1,8 +1,8 @@
 // lib/pages/connexion_page.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:fl/services/auth_service_v2.dart';
-import 'package:fl/utils/constantes_couleurs.dart';
+import 'package:fast_tmb/services/auth_service_v2.dart';
+import 'package:fast_tmb/utils/constantes_couleurs.dart';
 
 class ConnexionPage extends StatefulWidget {
   const ConnexionPage({Key? key}) : super(key: key);

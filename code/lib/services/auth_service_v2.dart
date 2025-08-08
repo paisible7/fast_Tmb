@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:fl/models/utilisateur.dart';
+import 'package:fast_tmb/models/utilisateur.dart';
 
 class AuthServiceV2 with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;

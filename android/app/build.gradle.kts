@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.fl"
+    namespace = "com.example.fast_tmb"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"
 

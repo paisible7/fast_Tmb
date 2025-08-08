@@ -1,6 +1,6 @@
 // pages/client/notifications.dart
 import 'package:flutter/material.dart';
-import 'package:fl/widgets/barre_navigation.dart';
+import 'package:fast_tmb/widgets/barre_navigation.dart';
 
 class NotificationsPage extends StatelessWidget {
   const NotificationsPage({Key? key}) : super(key: key);

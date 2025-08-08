@@ -2,13 +2,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:fl/services/firestore_service.dart';
-import 'package:fl/utils/constantes_couleurs.dart';
+import 'package:fast_tmb/services/firestore_service.dart';
+import 'package:fast_tmb/utils/constantes_couleurs.dart';
 
-import 'package:fl/services/notification_service.dart';
-import 'package:fl/utils/constantes_couleurs.dart';
-import 'package:fl/widgets/barre_navigation.dart';
-import 'package:fl/services/auth_service.dart';
+import 'package:fast_tmb/services/notification_service.dart';
+import 'package:fast_tmb/utils/constantes_couleurs.dart';
+import 'package:fast_tmb/widgets/barre_navigation.dart';
+import 'package:fast_tmb/services/auth_service.dart';
 
 class FileEnCoursPage extends StatefulWidget {
   const FileEnCoursPage({Key? key}) : super(key: key);

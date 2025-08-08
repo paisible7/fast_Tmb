@@ -1,23 +1,23 @@
 // main.dart
-import 'package:fl/pages/client/accueil.dart';
+import 'package:fast_tmb/pages/client/accueil.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
-import 'package:fl/services/auth_service_v2.dart';
-import 'package:fl/services/firestore_service.dart';
-import 'package:fl/services/notification_service.dart';
-// import 'package:fl/services/websocket_service.dart';
-import 'package:fl/auth/auth_wrapper.dart';
-import 'package:fl/pages/client/file_en_cours.dart';
-import 'package:fl/pages/client/scan_qr.dart';
-import 'package:fl/pages/client/notifications.dart';
-import 'package:fl/pages/client/parametres.dart';
-import 'package:fl/pages/connexion_page.dart';
-import 'package:fl/pages/agent/tableau_bord_agent.dart';
-import 'package:fl/pages/agent/statistiques_agent.dart';
+import 'package:fast_tmb/services/auth_service_v2.dart';
+import 'package:fast_tmb/services/firestore_service.dart';
+import 'package:fast_tmb/services/notification_service.dart';
+// import 'package:fast_tmb/services/websocket_service.dart';
+import 'package:fast_tmb/auth/auth_wrapper.dart';
+import 'package:fast_tmb/pages/client/file_en_cours.dart';
+import 'package:fast_tmb/pages/client/scan_qr.dart';
+import 'package:fast_tmb/pages/client/notifications.dart';
+import 'package:fast_tmb/pages/client/parametres.dart';
+import 'package:fast_tmb/pages/connexion_page.dart';
+import 'package:fast_tmb/pages/agent/tableau_bord_agent.dart';
+import 'package:fast_tmb/pages/agent/statistiques_agent.dart';
 
-import 'package:fl/utils/constantes_couleurs.dart';
+import 'package:fast_tmb/utils/constantes_couleurs.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

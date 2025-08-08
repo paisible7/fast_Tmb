@@ -2,10 +2,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:fl/services/auth_service_v2.dart';
-import 'package:fl/services/firestore_service.dart';
-import 'package:fl/widgets/barre_navigation.dart';
-import 'package:fl/utils/constantes_couleurs.dart';
+import 'package:fast_tmb/services/auth_service_v2.dart';
+import 'package:fast_tmb/services/firestore_service.dart';
+import 'package:fast_tmb/widgets/barre_navigation.dart';
+import 'package:fast_tmb/utils/constantes_couleurs.dart';
 
 class FileEnCoursPage extends StatelessWidget {
   const FileEnCoursPage({Key? key}) : super(key: key);

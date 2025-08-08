@@ -1,8 +1,8 @@
 // widgets/carte_ticket.dart
 import 'package:flutter/material.dart';
-import 'package:fl/models/ticket.dart';
-import 'package:fl/utils/format_date.dart';
-import 'package:fl/utils/constantes_couleurs.dart';
+import 'package:fast_tmb/models/ticket.dart';
+import 'package:fast_tmb/utils/format_date.dart';
+import 'package:fast_tmb/utils/constantes_couleurs.dart';
 
 class CarteTicket extends StatelessWidget {
   final Ticket ticket;

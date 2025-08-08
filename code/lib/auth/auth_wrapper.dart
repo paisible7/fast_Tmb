@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:fl/pages/connexion_page.dart';
-import 'package:fl/pages/agent/tableau_bord_agent.dart';
-import 'package:fl/pages/client/accueil.dart';
-import 'package:fl/services/auth_service_v2.dart';
+import 'package:fast_tmb/pages/connexion_page.dart';
+import 'package:fast_tmb/pages/agent/tableau_bord_agent.dart';
+import 'package:fast_tmb/pages/client/accueil.dart';
+import 'package:fast_tmb/services/auth_service_v2.dart';
 
 
 class AuthWrapper extends StatelessWidget {

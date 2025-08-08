@@ -1,12 +1,12 @@
 // pages/client/scan_qr.dart
-import 'package:fl/services/auth_service_v2.dart';
+import 'package:fast_tmb/services/auth_service_v2.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:fl/services/firestore_service.dart';
-import 'package:fl/utils/constantes_couleurs.dart';
-import 'package:fl/widgets/barre_navigation.dart';
-import 'package:fl/services/auth_service.dart';
+import 'package:fast_tmb/services/firestore_service.dart';
+import 'package:fast_tmb/utils/constantes_couleurs.dart';
+import 'package:fast_tmb/widgets/barre_navigation.dart';
+import 'package:fast_tmb/services/auth_service.dart';
 
 class ScanQrPage extends StatefulWidget {
   const ScanQrPage({Key? key}) : super(key: key);
