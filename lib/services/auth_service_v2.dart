@@ -81,44 +81,34 @@ class AuthServiceV2 with ChangeNotifier {
         print('AuthServiceV2: Profil existant trouvé');
         return Utilisateur.fromFirestore(doc);
       } else {
-        print('AuthServiceV2: Nouvel utilisateur - création du profil');
-        return await _createUserProfile(firebaseUser);
+        // Ne pas créer automatiquement de profil ici.
+        // Les clients sont créés via signUp(), les agents/superagents doivent être provisionnés manuellement.
+        print('AuthServiceV2: Aucun profil Firestore — rôle inconnu (éviter redirection erronée)');
+        return Utilisateur(
+          uid: firebaseUser.uid,
+          email: firebaseUser.email ?? '',
+          role: 'unknown',
+        );
       }
     } catch (e) {
       print('AuthServiceV2: Erreur récupération profil: $e');
-      // Créer un utilisateur par défaut en cas d'erreur
-      return _createDefaultUser(firebaseUser);
-    }
-  }
-
-  Future<Utilisateur> _createUserProfile(User firebaseUser) async {
-    try {
-      final role = firebaseUser.email!.contains('agent') ? 'agent' : 'client';
-      
-      await _firestore.collection('utilisateurs').doc(firebaseUser.uid).set({
-        'email': firebaseUser.email,
-        'role': role,
-        'createdAt': FieldValue.serverTimestamp(),
-      }).timeout(const Duration(seconds: 3));
-      
-      print('AuthServiceV2: Nouveau profil créé avec rôle: $role');
+      // En cas d'erreur, retourner un utilisateur avec rôle 'unknown' pour éviter une mauvaise redirection
       return Utilisateur(
         uid: firebaseUser.uid,
-        email: firebaseUser.email!,
-        role: role,
+        email: firebaseUser.email ?? '',
+        role: 'unknown',
       );
-    } catch (e) {
-      print('AuthServiceV2: Erreur création profil: $e');
-      return _createDefaultUser(firebaseUser);
     }
   }
 
+  // ignore: unused_element
   Utilisateur _createDefaultUser(User firebaseUser) {
-    final role = firebaseUser.email!.contains('agent') ? 'agent' : 'client';
-    print('AuthServiceV2: Création utilisateur par défaut avec rôle: $role');
+    // Utilisé seulement par signUp() pour créer un client par défaut
+    const role = 'client';
+    print('AuthServiceV2: Création utilisateur par défaut (non persistant) avec rôle: $role (signup uniquement)');
     return Utilisateur(
       uid: firebaseUser.uid,
-      email: firebaseUser.email!,
+      email: firebaseUser.email ?? '',
       role: role,
     );
   }

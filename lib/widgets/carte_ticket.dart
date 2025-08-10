@@ -40,7 +40,7 @@ class CarteTicket extends StatelessWidget {
       onTap: onTap,
       child: Card(
         color: surligne
-            ? ConstantesCouleurs.orange.withOpacity(0.1)
+            ? ConstantesCouleurs.orange.withValues(alpha: 0.1)
             : Colors.white,
         elevation: 2,
         shape: RoundedRectangleBorder(
@@ -69,6 +69,23 @@ class CarteTicket extends StatelessWidget {
                         color: statutColor,
                         fontWeight: FontWeight.w600,
                       ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        if (ticket.queueType != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: ConstantesCouleurs.orange.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              ticket.queueType == 'depot' ? 'Dépôt' : ticket.queueType == 'retrait' ? 'Retrait' : ticket.queueType!,
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(

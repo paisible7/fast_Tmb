@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:fast_tmb/pages/connexion_page.dart';
 import 'package:fast_tmb/pages/agent/tableau_bord_agent.dart';
 import 'package:fast_tmb/pages/client/accueil.dart';
+import 'package:fast_tmb/pages/superagent/statistiques_superagent.dart';
 import 'package:fast_tmb/services/auth_service_v2.dart';
 
 
@@ -53,12 +54,32 @@ class AuthWrapper extends StatelessWidget {
         }
 
         // Utilisateur connecté -> redirection selon le rôle
-        if (user.role == 'agent') {
-          print('AuthWrapper: 👨‍💼 Utilisateur agent détecté -> Tableau de bord');
-          return const TableauBordAgentPage();
-        } else {
-          print('AuthWrapper: 👤 Utilisateur client détecté -> Accueil');
-          return const AccueilPage();
+        switch (user.role) {
+          case 'superagent':
+            print('AuthWrapper: 🧭 Superagent détecté -> Tableau de bord superagent');
+            return const StatistiquesSuperAgentPage();
+          case 'agent':
+            print('AuthWrapper: 👨‍💼 Agent détecté -> Tableau de bord agent');
+            return const TableauBordAgentPage();
+          case 'unknown':
+            print('AuthWrapper: ⏳ Rôle inconnu -> attente profil');
+            // Déclencher une tentative de rafraîchissement du profil
+            Future.microtask(() => context.read<AuthServiceV2>().forceRefresh());
+            return const Scaffold(
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 12),
+                    Text('Chargement du profil...')
+                  ],
+                ),
+              ),
+            );
+          default:
+            print('AuthWrapper: 👤 Client détecté -> Accueil');
+            return const AccueilPage();
         }
       },
     );

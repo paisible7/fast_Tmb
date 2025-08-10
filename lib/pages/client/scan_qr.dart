@@ -6,7 +6,6 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:fast_tmb/services/firestore_service.dart';
 import 'package:fast_tmb/utils/constantes_couleurs.dart';
 import 'package:fast_tmb/widgets/barre_navigation.dart';
-import 'package:fast_tmb/services/auth_service.dart';
 
 import '../connexion_page.dart';
 
@@ -27,8 +26,39 @@ class _ScanQrPageState extends State<ScanQrPage> {
     if (_scanned) return;
     setState(() => _scanned = true);
     try {
+      // Exiger la sélection du service (queueType) avant la création du ticket
+      final queueType = await showModalBottomSheet<String>(
+        context: context,
+        builder: (ctx) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const ListTile(title: Text('Choisir un service')),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.south_west, color: ConstantesCouleurs.orange),
+                title: const Text('Dépôt'),
+                onTap: () => Navigator.pop(ctx, 'depot'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.north_east, color: ConstantesCouleurs.orange),
+                title: const Text('Retrait'),
+                onTap: () => Navigator.pop(ctx, 'retrait'),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      );
+
+      if (queueType == null) {
+        // Annulé: autoriser un nouveau scan
+        if (mounted) setState(() => _scanned = false);
+        return;
+      }
+
       await Provider.of<FirestoreService>(context, listen: false)
-          .ajouterTicket();
+          .ajouterTicketAvecService(queueType);
       await Future.delayed(const Duration(seconds: 2));
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

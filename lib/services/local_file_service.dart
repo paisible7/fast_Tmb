@@ -7,11 +7,6 @@ class LocalFileService {
     return await getApplicationDocumentsDirectory();
   }
 
-  /// Chemin vers le répertoire Cache de l’app
-  Future<Directory> get _cacheDir async {
-    return await getTemporaryDirectory();
-  }
-
   /// Retourne un File dans Documents
   Future<File> fileInDocuments(String filename) async {
     final dir = await _documentsDir;

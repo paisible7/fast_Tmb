@@ -1,21 +1,156 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Règles pour les utilisateurs - chaque utilisateur peut lire/écrire ses propres données
+
+    // Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAgent() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/utilisateurs/$(request.auth.uid)).data.role == 'agent';
+    }
+
+    function isSuperAgent() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/utilisateurs/$(request.auth.uid)).data.role == 'superagent';
+    }
+
+    // ====================
+    // Collection: settings (horaires, config publique)
+    // ====================
+    match /settings/{docId} {
+      allow read: if true;            // lecture publique pour afficher horaires
+      allow write: if isSuperAgent(); // modification réservée au superagent
+    }
+
+    // =========================
+    // Collection: utilisateurs
+    // =========================
+    // - Chaque utilisateur peut lire/créer son propre document
+    // - Les superagents peuvent lire tous les utilisateurs (pour l'administration et les stats)
+    // - Sous-collections:
+    //   * fcmTokens: lecture/écriture par le propriétaire uniquement
+    //   * notifications: lecture par le propriétaire; création par propriétaire OU agent/superagent
     match /utilisateurs/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isSignedIn() && (request.auth.uid == userId || isSuperAgent());
+      allow create: if isSignedIn() && request.auth.uid == userId;
+
+      // Sous-collection des tokens FCM
+      match /fcmTokens/{tokenId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      // Sous-collection des notifications
+      match /notifications/{docId} {
+        // Le propriétaire peut tout lire/écrire sur ses notifications
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        // Création autorisée également aux agents/superagents (pour notifier les clients)
+        allow create: if isSignedIn() && (
+          request.auth.uid == userId || isAgent() || isSuperAgent()
+        );
+        // Mise à jour/suppression réservées au propriétaire
+        allow update, delete: if isSignedIn() && request.auth.uid == userId;
+      }
     }
-    
-    // Règles pour les tickets - tous les utilisateurs authentifiés peuvent lire/écrire
+
+    // =========================
+    // Collection: users (profil + sous-collections liées à l'app)
+    // =========================
+    // Ce bloc couvre les chemins utilisés par l'app mobile:
+    // - users/{uid}
+    // - users/{uid}/fcmTokens/{tokenId}
+    // - users/{uid}/notifications/{docId}
+    match /users/{userId} {
+      // Le propriétaire peut lire/écrire son propre document user
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+
+      // Sous-collection des tokens FCM: le propriétaire peut lire/écrire ses tokens
+      match /fcmTokens/{tokenId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      // Sous-collection des notifications: le propriétaire peut lire/écrire ses notifications
+      match /notifications/{docId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
+    }
+
+    // ====================
+    // Collection: tickets
+    // ====================
     match /tickets/{ticketId} {
-      allow read, write: if request.auth != null;
+
+      // Création d’un ticket:
+      // - Autorisée pour les AGENTS (guichet) sans contraintes supplémentaires
+      // - Autorisée pour le CLIENT uniquement pour SON propre ticket,
+      //   avec contraintes de cohérence et champs limités
+      // Version moins stricte: agent ou client (créateur) peuvent créer le ticket
+      allow create: if isSignedIn() && (
+        isAgent() || isSuperAgent() || request.resource.data.uid == request.auth.uid
+      );
+
+      // Lecture:
+      // - Agent/Superagent: peut lire tous les tickets
+      // - Client: peut lire ses propres tickets
+      // - Clients et agents peuvent lire les tickets en attente (status == 'en_attente')
+      //   afin d'afficher les files (compteurs/aperçu). Cette condition utilise
+      //   resource.data.status et reste compatible avec les requêtes filtrées.
+      allow read: if isSignedIn() && (
+        isAgent() || isSuperAgent() ||
+        resource.data.uid == request.auth.uid ||
+        resource.data.status == 'en_attente'
+      );
+
+      // Mise à jour:
+      // - Agent: autorisé (pour changer statut, assignation, etc.)
+      // - Client: UNIQUEMENT pour annuler son ticket en_attente -> 'annule' + cancelledAt
+      allow update: if isSignedIn() && (
+        isAgent() || isSuperAgent() ||
+        (
+          resource.data.uid == request.auth.uid &&
+          resource.data.status == 'en_attente' &&
+          request.resource.data.status == 'annule' &&
+          request.resource.data.cancelledAt == request.time &&
+          // Le client ne peut modifier QUE ces champs lors de l’annulation
+          request.resource.data.keys().hasOnly(['status', 'cancelledAt'])
+        )
+      );
+
+      // Suppression: agent uniquement
+      allow delete: if isSignedIn() && (isAgent() || isSuperAgent());
     }
-    
-    // Collection de test pour le diagnostic
-    match /test/{document} {
-      allow read, write: if request.auth != null;
+
+    // ==================
+    // Document: meta/compteur_tickets
+    // ==================
+    match /meta/compteur_tickets {
+      allow read, write: if isSignedIn();
     }
-    
+
+    // ====================
+    // Collections: services, guichets
+    // ====================
+    match /services/{serviceId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isSuperAgent();
+    }
+    match /guichets/{guichetId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isSuperAgent();
+    }
+
+    // ====================
+    // Collection: provisioning_requests
+    // ====================
+    match /provisioning_requests/{reqId} {
+      // superagent crée des demandes; Cloud Functions (no-auth) met à jour status
+      allow create: if isSignedIn() && isSuperAgent();
+      allow read: if isSignedIn() && isSuperAgent();
+      // write (update/delete) côté client interdit
+    }
+
     // Règles par défaut - refuser tout le reste
     match /{document=**} {
       allow read, write: if false;
