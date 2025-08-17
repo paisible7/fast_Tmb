@@ -23,6 +23,22 @@ class _FileEnCoursPageState extends State<FileEnCoursPage> with SingleTickerProv
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    // Après le premier frame, tenter d'annuler le ticket si le service est fermé
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final firestoreService = Provider.of<FirestoreService>(context, listen: false);
+      final cancelled = await firestoreService.annulerMonTicketSiServiceFerme();
+      if (!mounted) return;
+      if (cancelled) {
+        final messenger = ScaffoldMessenger.maybeOf(context);
+        messenger?.showSnackBar(
+          const SnackBar(
+            content: Text('Service fermé: votre ticket a été annulé automatiquement.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    });
   }
 
   @override
@@ -132,17 +148,21 @@ class _FileEnCoursPageState extends State<FileEnCoursPage> with SingleTickerProv
               if (confirm != true) return;
               try {
                 await firestoreService.annulerMonTicketActif();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                if (!mounted) return;
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  final messenger = ScaffoldMessenger.maybeOf(this.context);
+                  messenger?.showSnackBar(
                     const SnackBar(content: Text('Ticket annulé'), backgroundColor: Colors.redAccent),
                   );
-                }
+                });
               } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                if (!mounted) return;
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  final messenger = ScaffoldMessenger.maybeOf(this.context);
+                  messenger?.showSnackBar(
                     SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
                   );
-                }
+                });
               }
             });
           },

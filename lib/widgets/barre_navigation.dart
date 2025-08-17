@@ -38,13 +38,12 @@ class BarreNavigation extends StatelessWidget {
       final Map<String, int> superAgentRoutes = const {
         '/statistiques_superagent': 0,
         '/admin_services': 1,
-        '/admin_agents': 2,
-        '/parametres': 3,
+        '/parametres': 2,
       };
       items = const [
         BottomNavigationBarItem(icon: Icon(Icons.analytics_outlined), label: 'Stats'),
         BottomNavigationBarItem(icon: Icon(Icons.home_repair_service_outlined), label: 'Services'),
-        BottomNavigationBarItem(icon: Icon(Icons.group_outlined), label: 'Agents'),
+        // BottomNavigationBarItem(icon: Icon(Icons.group_outlined), label: 'Agents'), // Désactivé provisoirement
         BottomNavigationBarItem(icon: Icon(Icons.settings_outlined), label: 'Param'),
       ];
       // Si la page a été poussée directement (sans nom de route), on considère l'onglet Stats comme sélectionné

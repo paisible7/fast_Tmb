@@ -50,8 +50,7 @@ class _SatisfactionPageState extends State<SatisfactionPage> {
 
     try {
       final firestoreService = Provider.of<FirestoreService>(context, listen: false);
-      await firestoreService.ajouterSatisfaction(
-        ticketId: widget.ticketId,
+      await firestoreService.ajouterEvaluationService(
         score: _selectedRating,
         comment: _commentController.text.trim(),
       );
@@ -71,7 +70,7 @@ class _SatisfactionPageState extends State<SatisfactionPage> {
               ],
             ),
             content: const Text(
-              'Votre évaluation a été enregistrée. Merci de nous aider à améliorer notre service.',
+              'Votre avis a été enregistré. Merci de nous aider à améliorer notre service bancaire et cette application !',
             ),
             actions: [
               ElevatedButton(
@@ -188,10 +187,19 @@ class _SatisfactionPageState extends State<SatisfactionPage> {
 
           // Question de satisfaction
           const Text(
-            'Comment évaluez-vous votre expérience ?',
+            'Comment évaluez-vous notre service ?',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Votre avis sur le service bancaire et cette application nous aide à nous améliorer',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
             ),
             textAlign: TextAlign.center,
           ),
@@ -215,7 +223,7 @@ class _SatisfactionPageState extends State<SatisfactionPage> {
                     _selectedRating >= rating ? Icons.star : Icons.star_border,
                     size: 40,
                     color: _selectedRating >= rating 
-                        ? _getRatingColor(rating)
+                        ? ConstantesCouleurs.orange
                         : Colors.grey[400],
                   ),
                 ),
@@ -232,7 +240,7 @@ class _SatisfactionPageState extends State<SatisfactionPage> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w500,
-                color: _getRatingColor(_selectedRating),
+                color: ConstantesCouleurs.orange,
               ),
             ),
 

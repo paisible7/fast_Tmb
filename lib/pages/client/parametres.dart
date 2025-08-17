@@ -2,13 +2,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fast_tmb/services/auth_service_v2.dart';
+import 'package:fast_tmb/services/firestore_service.dart';
 import 'package:fast_tmb/widgets/barre_navigation.dart';
 import 'package:fast_tmb/utils/constantes_couleurs.dart';
 import 'package:fast_tmb/widgets/role_guard.dart';
-import 'package:fast_tmb/pages/client/satisfaction_page.dart';
-import 'package:fast_tmb/services/notification_service.dart';
 
 import '../connexion_page.dart';
 
@@ -43,19 +41,20 @@ class _ParametresPageState extends State<ParametresPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          SwitchListTile(
-            title: const Text('Notifications push'),
-            value: _notificationsEnabled,
-            activeColor: ConstantesCouleurs.orange,
-            onChanged: (val) async {
-              setState(() => _notificationsEnabled = val);
-              if (val) {
-                await FirebaseMessaging.instance.requestPermission();
-              } else {
-                await FirebaseMessaging.instance.deleteToken();
-              }
-            },
-          ),
+          if (authService.currentUser?.role != 'superagent')
+            SwitchListTile(
+              title: const Text('Notifications push'),
+              value: _notificationsEnabled,
+              activeColor: ConstantesCouleurs.orange,
+              onChanged: (val) async {
+                setState(() => _notificationsEnabled = val);
+                if (val) {
+                  await FirebaseMessaging.instance.requestPermission();
+                } else {
+                  await FirebaseMessaging.instance.deleteToken();
+                }
+              },
+            ),
           const Divider(),
           // Option d'évaluation pour les clients uniquement
           if (authService.currentUser?.role == 'client') ...[
@@ -80,60 +79,89 @@ class _ParametresPageState extends State<ParametresPage> {
   }
 
   void _showEvaluationOption(BuildContext context) async {
-    try {
-      // Chercher le dernier ticket "servi" de l'utilisateur
-      final user = Provider.of<AuthServiceV2>(context, listen: false).currentUser;
-      if (user == null) return;
-      
-      final snap = await FirebaseFirestore.instance
-          .collection('tickets')
-          .where('creatorId', isEqualTo: user.uid)
-          .where('status', isEqualTo: 'servi')
-          .orderBy('treatedAt', descending: true)
-          .limit(1)
-          .get();
-      
-      if (snap.docs.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Aucun service terminé à évaluer'),
-            backgroundColor: Colors.orange,
-          ),
+    final fs = Provider.of<FirestoreService>(context, listen: false);
+    int selected = 5;
+    final controller = TextEditingController();
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx2, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+                top: 16,
+                left: 16,
+                right: 16,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Votre évaluation', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: List.generate(5, (i) {
+                      final idx = i + 1;
+                      return IconButton(
+                        icon: Icon(
+                          idx <= selected ? Icons.star : Icons.star_border,
+                          color: ConstantesCouleurs.orange,
+                        ),
+                        onPressed: () {
+                          setModalState(() {
+                            selected = idx;
+                          });
+                        },
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: controller,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Commentaire (optionnel)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.send),
+                      style: ElevatedButton.styleFrom(backgroundColor: ConstantesCouleurs.orange),
+                      label: const Text('Envoyer'),
+                      onPressed: () async {
+                        try {
+                          await fs.ajouterEvaluationService(score: selected, comment: controller.text);
+                          if (mounted) Navigator.of(ctx).pop();
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Merci pour votre évaluation !')),
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.red),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         );
-        return;
-      }
-      
-      final Map<String, dynamic> ticketData = snap.docs.first.data();
-      final ticketId = snap.docs.first.id;
-      
-      // Vérifier si ce ticket a déjà été évalué
-      if (ticketData['satisfaction'] != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Ce service a déjà été évalué'),
-            backgroundColor: Colors.blue,
-          ),
-        );
-        return;
-      }
-      
-      // Ouvrir l'évaluation en Bottom Sheet
-      final numero = ticketData['numero']?.toString() ?? 'N/A';
-      final queueType = ticketData['queueType'] ?? 'depot';
-      NotificationService().openEvaluationBottomSheet(
-        ticketId: ticketId,
-        numero: numero,
-        queueType: queueType,
-      );
-      
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur lors de la recherche du service: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+      },
+    );
   }
 
   Future<void> _showLogoutConfirmationDialog() async {

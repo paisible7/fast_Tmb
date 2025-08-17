@@ -4,7 +4,7 @@ import 'package:fast_tmb/utils/constantes_couleurs.dart';
 
 class BoutonPrincipal extends StatelessWidget {
   final String text;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   const BoutonPrincipal({
     Key? key,

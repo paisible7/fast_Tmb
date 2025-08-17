@@ -38,8 +38,8 @@ class _TableauBordAgentPageState extends State<TableauBordAgentPage> {
     try {
       final fs = Provider.of<FirestoreService>(context, listen: false);
       final futures = <Future<int>>[
-        fs.compterAujourdHuiParStatusEtFile('termine', 'depot'),
-        fs.compterAujourdHuiParStatusEtFile('termine', 'retrait'),
+        fs.compterAujourdHuiParStatusEtFile('servi', 'depot'),
+        fs.compterAujourdHuiParStatusEtFile('servi', 'retrait'),
         fs.compterAujourdHuiParStatusEtFile('absent', 'depot'),
         fs.compterAujourdHuiParStatusEtFile('absent', 'retrait'),
         fs.compterAujourdHuiParStatusEtFile('annule', 'depot'),
@@ -482,7 +482,7 @@ class _TableauBordAgentPageState extends State<TableauBordAgentPage> {
                                     ),
                                   ),
                                   const SizedBox(height: 8),
-                                  Text('Client : ${doc['creatorEmail'] ?? doc['creatorId'] ?? 'Inconnu'}'),
+                                  Text('Client : ${doc['creatorEmail'] ?? doc['uid'] ?? 'Inconnu'}'),
                                   const SizedBox(height: 8),
                                   Text('Service: ${(doc.data() as Map<String, dynamic>)['service'] ?? 'Non spécifié'}'),
                                   const SizedBox(height: 16),

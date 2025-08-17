@@ -35,7 +35,13 @@ class _StatistiquesSuperAgentPageState extends State<StatistiquesSuperAgentPage>
   @override
   void initState() {
     super.initState();
-    _chargerAgentsEtStats();
+    // Nettoyage auto des tickets en_attente des jours précédents (sans bouton)
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final fs = Provider.of<FirestoreService>(context, listen: false);
+      await fs.ensureCompteurTicketsStructure();
+      await fs.nettoyerTicketsAnciensEnAttente();
+      await _chargerAgentsEtStats();
+    });
   }
 
   Future<void> _chargerAgentsEtStats() async {
@@ -44,7 +50,7 @@ class _StatistiquesSuperAgentPageState extends State<StatistiquesSuperAgentPage>
       final fs = Provider.of<FirestoreService>(context, listen: false);
       // Charger la liste des agents au premier chargement
       if (_agents.isEmpty) {
-        _agents = await fs.listerAgents();
+        _agents = await fs.listerAgentsEtSuperagents();
       }
       await _chargerStats();
     } catch (e) {
@@ -62,7 +68,7 @@ class _StatistiquesSuperAgentPageState extends State<StatistiquesSuperAgentPage>
       final from = now.subtract(Duration(days: _periodeJours));
 
       // Compteurs
-      _termine = await fs.compterParPeriode(status: 'termine', from: from, to: now, queueType: _queueType, agentId: _agentId);
+      _termine = await fs.compterParPeriode(status: 'servi', from: from, to: now, queueType: _queueType, agentId: _agentId);
       _absent = await fs.compterParPeriode(status: 'absent', from: from, to: now, queueType: _queueType, agentId: _agentId);
       _annule = await fs.compterParPeriode(status: 'annule', from: from, to: now, queueType: _queueType, agentId: _agentId);
 
@@ -179,11 +185,11 @@ class _StatistiquesSuperAgentPageState extends State<StatistiquesSuperAgentPage>
                             icon: const Icon(Icons.home_repair_service_outlined),
                             label: const Text('Services'),
                           ),
-                          ElevatedButton.icon(
-                            onPressed: () => Navigator.pushNamed(context, '/admin_agents'),
-                            icon: const Icon(Icons.group_outlined),
-                            label: const Text('Agents'),
-                          ),
+                          // ElevatedButton.icon(
+                          //   onPressed: () => Navigator.pushNamed(context, '/admin_agents'),
+                          //   icon: const Icon(Icons.group_outlined),
+                          //   label: const Text('Agents'),
+                          // ), // Désactivé provisoirement
                           ElevatedButton.icon(
                             onPressed: () => Navigator.pushNamed(context, '/admin_horaires'),
                             icon: const Icon(Icons.access_time),
@@ -216,7 +222,7 @@ class _StatistiquesSuperAgentPageState extends State<StatistiquesSuperAgentPage>
             const Text('Compteurs', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Row(children: [
-              _chip(Icons.check_circle, 'Traités', _termine, Colors.green),
+              _chip(Icons.check_circle, 'Servis', _termine, Colors.green),
               const SizedBox(width: 8),
               _chip(Icons.block, 'Absents', _absent, Colors.red),
               const SizedBox(width: 8),
@@ -247,7 +253,7 @@ class _StatistiquesSuperAgentPageState extends State<StatistiquesSuperAgentPage>
               children: [
                 const Icon(Icons.star_rate, color: Colors.amber, size: 20),
                 const SizedBox(width: 8),
-                Text('Satisfaction Client ($scope)', 
+                Text('Évaluation du Service ($scope)', 
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ],
             ),

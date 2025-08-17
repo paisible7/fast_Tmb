@@ -109,7 +109,7 @@ class _SansSmartphonePageState extends State<SansSmartphonePage> {
       final uid = _auth.currentUser!.uid;
       final snap = await FirebaseFirestore.instance
           .collection('tickets')
-          .where('creatorId', isEqualTo: uid)
+          .where('uid', isEqualTo: uid)
           .where('status', whereIn: ['en_attente', 'en_cours'])
           .orderBy('createdAt', descending: true)
           .limit(1)
@@ -156,6 +156,9 @@ class _SansSmartphonePageState extends State<SansSmartphonePage> {
       }
     } catch (e) {
       if (mounted) {
+        final message = e.toString().contains('Service bientôt fermé')
+            ? e.toString()
+            : 'Impossible de créer un ticket pour le moment. Veuillez réessayer dans quelques instants ou vérifier les horaires.';
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
@@ -163,10 +166,10 @@ class _SansSmartphonePageState extends State<SansSmartphonePage> {
               children: [
                 Icon(Icons.error, color: Colors.red, size: 28),
                 SizedBox(width: 8),
-                Text('Erreur'),
+                Text('Action refusée'),
               ],
             ),
-            content: Text(e.toString(), style: const TextStyle(fontSize: 16)),
+            content: Text(message, style: const TextStyle(fontSize: 16)),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
@@ -177,6 +180,8 @@ class _SansSmartphonePageState extends State<SansSmartphonePage> {
         );
       }
     } finally {
+      // Petit cooldown pour éviter des clics répétés immédiats après un refus
+      await Future.delayed(const Duration(seconds: 2));
       if (mounted) setState(() { _creatingTicket = false; });
     }
   }

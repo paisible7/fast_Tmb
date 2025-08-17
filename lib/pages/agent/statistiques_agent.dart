@@ -18,8 +18,8 @@ class StatistiquesAgentPage extends StatefulWidget {
 class _StatistiquesAgentPageState extends State<StatistiquesAgentPage> {
   int _periodeJours = 7; // 1, 7, 30
   bool _loading = false;
-  Map<String, dynamic>? _depot;   // { termine, absent, annule, avgTrait, avgWait }
-  Map<String, dynamic>? _retrait; // { termine, absent, annule, avgTrait, avgWait }
+  Map<String, dynamic>? _depot;   // { servi, absent, annule, avgTrait, avgWait }
+  Map<String, dynamic>? _retrait; // { servi, absent, annule, avgTrait, avgWait }
   double _avgTraitementAgent = 0.0;
   double _avgAttenteAgent = 0.0;
   double _satisfactionMoyenne = 0.0;
@@ -29,7 +29,13 @@ class _StatistiquesAgentPageState extends State<StatistiquesAgentPage> {
   @override
   void initState() {
     super.initState();
-    _chargerStats();
+    // Nettoyage auto des tickets en attente des jours précédents (pas de bouton)
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final fs = Provider.of<FirestoreService>(context, listen: false);
+      await fs.ensureCompteurTicketsStructure();
+      await fs.nettoyerTicketsAnciensEnAttente();
+      await _chargerStats();
+    });
   }
 
   Future<void> _chargerStats() async {
@@ -39,10 +45,10 @@ class _StatistiquesAgentPageState extends State<StatistiquesAgentPage> {
       final auth = Provider.of<AuthServiceV2>(context, listen: false);
       final agentId = auth.currentUser?.uid;
       // Compteurs du jour
-      final depTr = await fs.compterAujourdHuiParStatusEtFile('termine', 'depot');
+      final depTr = await fs.compterAujourdHuiParStatusEtFile('servi', 'depot');
       final depAb = await fs.compterAujourdHuiParStatusEtFile('absent', 'depot');
       final depAn = await fs.compterAujourdHuiParStatusEtFile('annule', 'depot');
-      final retTr = await fs.compterAujourdHuiParStatusEtFile('termine', 'retrait');
+      final retTr = await fs.compterAujourdHuiParStatusEtFile('servi', 'retrait');
       final retAb = await fs.compterAujourdHuiParStatusEtFile('absent', 'retrait');
       final retAn = await fs.compterAujourdHuiParStatusEtFile('annule', 'retrait');
 
@@ -66,14 +72,14 @@ class _StatistiquesAgentPageState extends State<StatistiquesAgentPage> {
       }
 
       _depot = {
-        'termine': depTr,
+        'servi': depTr,
         'absent': depAb,
         'annule': depAn,
         'avgTrait': depAvgTrait,
         'avgWait': depAvgWait,
       };
       _retrait = {
-        'termine': retTr,
+        'servi': retTr,
         'absent': retAb,
         'annule': retAn,
         'avgTrait': retAvgTrait,
@@ -182,7 +188,7 @@ class _StatistiquesAgentPageState extends State<StatistiquesAgentPage> {
   }
 
   Widget _buildHeaderResume() {
-    final termine = (_depot?['termine'] ?? 0) + (_retrait?['termine'] ?? 0);
+    final termine = (_depot?['servi'] ?? 0) + (_retrait?['servi'] ?? 0);
     final absent = (_depot?['absent'] ?? 0) + (_retrait?['absent'] ?? 0);
     final annule = (_depot?['annule'] ?? 0) + (_retrait?['annule'] ?? 0);
 
@@ -195,7 +201,7 @@ class _StatistiquesAgentPageState extends State<StatistiquesAgentPage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _smallStat(Icons.check_circle, 'Traités', termine, Colors.green),
+            _smallStat(Icons.check_circle, 'Servis', termine, Colors.green),
             _smallStat(Icons.block, 'Absents', absent, Colors.red),
             _smallStat(Icons.cancel, 'Annulés', annule, Colors.grey),
           ],
@@ -290,7 +296,7 @@ class _StatistiquesAgentPageState extends State<StatistiquesAgentPage> {
   }
 
   Widget _buildCard(String titre, Map<String, dynamic>? data) {
-    final termine = data?['termine'] ?? 0;
+    final termine = data?['servi'] ?? 0;
     final absent = data?['absent'] ?? 0;
     final annule = data?['annule'] ?? 0;
     final avgTrait = (data?['avgTrait'] as double?) ?? 0.0;
@@ -308,7 +314,7 @@ class _StatistiquesAgentPageState extends State<StatistiquesAgentPage> {
             const SizedBox(height: 8),
             Row(
               children: [
-                _chip(Icons.check_circle, 'Traités', termine, Colors.green),
+                _chip(Icons.check_circle, 'Servis', termine, Colors.green),
                 const SizedBox(width: 8),
                 _chip(Icons.block, 'Absents', absent, Colors.red),
                 const SizedBox(width: 8),

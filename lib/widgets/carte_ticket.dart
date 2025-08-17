@@ -26,8 +26,11 @@ class CarteTicket extends StatelessWidget {
       case 'en_cours':
         statutColor = ConstantesCouleurs.orange;
         break;
-      case 'termine':
-        statutColor = ConstantesCouleurs.orange;
+      case 'servi':
+        statutColor = Colors.green;
+        break;
+      case 'termine': // compatibilité legacy
+        statutColor = Colors.green;
         break;
       case 'absent':
         statutColor = Colors.red;

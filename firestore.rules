@@ -46,10 +46,10 @@ service cloud.firestore {
       match /notifications/{docId} {
         // Le propriétaire peut tout lire/écrire sur ses notifications
         allow read: if isSignedIn() && request.auth.uid == userId;
-        // Création autorisée également aux agents/superagents (pour notifier les clients)
-        allow create: if isSignedIn() && (
-          request.auth.uid == userId || isAgent() || isSuperAgent()
-        );
+        // Création PAR LE PROPRIÉTAIRE UNIQUEMENT
+        // NOTE: Création par agent/superagent désactivée (mise en commentaire volontaire)
+        // Ancien comportement: request.auth.uid == userId || isAgent() || isSuperAgent()
+        allow create: if isSignedIn() && request.auth.uid == userId;
         // Mise à jour/suppression réservées au propriétaire
         allow update, delete: if isSignedIn() && request.auth.uid == userId;
       }
@@ -104,17 +104,23 @@ service cloud.firestore {
       );
 
       // Mise à jour:
-      // - Agent: autorisé (pour changer statut, assignation, etc.)
-      // - Client: UNIQUEMENT pour annuler son ticket en_attente -> 'annule' + cancelledAt
+      // - Agent/Superagent: autorisés (changer statut, assignation, etc.)
+      // - Client: UNIQUEMENT pour annuler son ticket en_attente -> status 'annule' + cancelledAt (timestamp)
+      //   Optionnellement, le client peut fournir un cancelledReason (string)
       allow update: if isSignedIn() && (
         isAgent() || isSuperAgent() ||
         (
           resource.data.uid == request.auth.uid &&
           resource.data.status == 'en_attente' &&
           request.resource.data.status == 'annule' &&
-          request.resource.data.cancelledAt == request.time &&
-          // Le client ne peut modifier QUE ces champs lors de l’annulation
-          request.resource.data.keys().hasOnly(['status', 'cancelledAt'])
+          // Le client ne peut modifier QUE ces champs lors de l'annulation
+          // IMPORTANT: on vérifie les CHAMPS MODIFIÉS (diff) et non l'ensemble des clés du document
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'cancelledAt', 'cancelledReason']) &&
+          // cancelledAt doit être un timestamp (peut venir d'un serverTimestamp())
+          request.resource.data.cancelledAt is timestamp &&
+          // cancelledReason est optionnel, mais s'il est présent, doit être une string
+          (!request.resource.data.keys().hasAny(['cancelledReason']) ||
+           request.resource.data.cancelledReason is string)
         )
       );
 
@@ -139,6 +145,17 @@ service cloud.firestore {
     match /guichets/{guichetId} {
       allow read: if isSignedIn();
       allow write: if isSignedIn() && isSuperAgent();
+    }
+
+    // ====================
+    // Collection: evaluations_service
+    // ====================
+    match /evaluations_service/{evalId} {
+      // Clients peuvent créer leurs propres évaluations
+      allow create: if isSignedIn() && request.resource.data.clientId == request.auth.uid;
+      // Lecture pour agents/superagents (pour statistiques)
+      allow read: if isSignedIn() && (isAgent() || isSuperAgent());
+      // Pas de modification/suppression une fois créée
     }
 
     // ====================

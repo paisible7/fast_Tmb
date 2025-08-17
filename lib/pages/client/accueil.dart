@@ -13,8 +13,47 @@ import 'package:fast_tmb/services/horaires_service.dart';
 
 import '../connexion_page.dart';
 
-class AccueilPage extends StatelessWidget {
+class AccueilPage extends StatefulWidget {
   const AccueilPage({Key? key}) : super(key: key);
+
+  @override
+  State<AccueilPage> createState() => _AccueilPageState();
+}
+
+class _AccueilPageState extends State<AccueilPage> {
+  bool _isProcessing = false;
+
+  String _getServiceLabel(String? queueType) {
+    switch (queueType) {
+      case 'depot':
+        return 'Dépôt';
+      case 'retrait':
+        return 'Retrait';
+      default:
+        return 'Non spécifié';
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Annulation automatique si service fermé, dès l'ouverture de l'accueil
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final firestoreService = Provider.of<FirestoreService>(context, listen: false);
+      final cancelled = await firestoreService.annulerMonTicketSiServiceFerme();
+      if (!mounted) return;
+      if (cancelled) {
+        final messenger = ScaffoldMessenger.maybeOf(context);
+        messenger?.showSnackBar(
+          const SnackBar(
+            content: Text('Service fermé: votre ticket a été annulé automatiquement.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +122,33 @@ class AccueilPage extends StatelessWidget {
                         style: const TextStyle(
                             fontSize: 20, fontStyle: FontStyle.italic)),
                     const SizedBox(height: 8),
-                    Text('File: ${data['queueType'] ?? 'Non spécifié'}'),
+                    Text('Service: ${_getServiceLabel(data['queueType'])}',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 12),
+                    StreamBuilder<Duration>(
+                      stream: firestore.tempsAttenteEstimeStream(queueType: data['queueType']),
+                      builder: (context, waitSnapshot) {
+                        final waitTime = waitSnapshot.data ?? Duration.zero;
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.access_time, color: Colors.blue.shade600),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Temps d\'attente estimé: ${formatDuration(waitTime)}',
+                                style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.w500),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                     const Spacer(),
                     const Text(
                         'Veuillez patienter, un agent va bientôt vous appeler.',
@@ -144,53 +209,29 @@ class AccueilPage extends StatelessWidget {
                       ],
                     ),
                     const Spacer(),
-                    BoutonPrincipal(
-                      text: 'Prendre un ticket',
-                      onPressed: () async {
-                        // Ouvre un sélecteur de service (dépôt / retrait)
-                        final queueType = await showModalBottomSheet<String>(
-                          context: context,
-                          builder: (ctx) => SafeArea(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const ListTile(title: Text('Choisir un service')),
-                                Divider(height: 1, color: Colors.grey.withValues(alpha: 0.5)),
-                                ListTile(
-                                  leading: const Icon(Icons.south_west, color: ConstantesCouleurs.orange),
-                                  title: const Text('Dépôt'),
-                                  onTap: () => Navigator.pop(ctx, 'depot'),
-                                ),
-                                ListTile(
-                                  leading: const Icon(Icons.north_east, color: ConstantesCouleurs.orange),
-                                  title: const Text('Retrait'),
-                                  onTap: () => Navigator.pop(ctx, 'retrait'),
-                                ),
-                                const SizedBox(height: 8),
-                              ],
+                    StreamBuilder(
+                      stream: HorairesService().getHorairesStream(),
+                      builder: (context, snapHoraire) {
+                        final open = snapHoraire.hasData
+                            ? (snapHoraire.data as dynamic).isOpenNow(DateTime.now())
+                            : true; // par défaut on laisse actif pendant chargement
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            BoutonPrincipal(
+                              text: 'Prendre un ticket',
+                              onPressed: open && !_isProcessing ? () { _prendreTicket(context); } : null,
                             ),
-                          ),
+                            if (!open) ...[
+                              const SizedBox(height: 8),
+                              const Text(
+                                'Service fermé actuellement. Veuillez consulter les horaires ci-dessus.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.redAccent),
+                              ),
+                            ]
+                          ],
                         );
-
-                        if (queueType == null) return; // annulé
-                        try {
-                          await firestore.ajouterTicketAvecService(queueType);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Ticket ajouté avec succès !'),
-                              backgroundColor: ConstantesCouleurs.orange,
-                            ),
-                          );
-                          // Redirige automatiquement vers la page "File en cours"
-                          Navigator.pushReplacementNamed(context, '/file_en_cours');
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Erreur : $e'),
-                              backgroundColor: Colors.redAccent,
-                            ),
-                          );
-                        }
                       },
                     ),
                   ],
@@ -202,6 +243,66 @@ class AccueilPage extends StatelessWidget {
       ),
     ),
     );
+  }
+
+  Future<void> _prendreTicket(BuildContext context) async {
+    final firestore = Provider.of<FirestoreService>(context, listen: false);
+    // Ouvre un sélecteur de service (dépôt / retrait)
+    final queueType = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(title: Text('Choisir un service')),
+            Divider(height: 1, color: Colors.grey.withValues(alpha: 0.5)),
+            ListTile(
+              leading: const Icon(Icons.south_west, color: ConstantesCouleurs.orange),
+              title: const Text('Dépôt'),
+              onTap: () => Navigator.pop(ctx, 'depot'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.north_east, color: ConstantesCouleurs.orange),
+              title: const Text('Retrait'),
+              onTap: () => Navigator.pop(ctx, 'retrait'),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+
+    if (queueType == null) return; // annulé
+    try {
+      if (!mounted) return;
+      setState(() { _isProcessing = true; });
+      await firestore.ajouterTicketAvecService(queueType);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ticket ajouté avec succès !'),
+          backgroundColor: ConstantesCouleurs.orange,
+        ),
+      );
+      // Redirige automatiquement vers la page "File en cours"
+      Navigator.pushReplacementNamed(context, '/file_en_cours');
+    } catch (e) {
+      // Message clair lors du refus proche fermeture
+      final message = e.toString().contains('Service bientôt fermé')
+          ? e.toString()
+          : 'Impossible de prendre un ticket pour le moment. Veuillez réessayer plus tard.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      // Désactivation temporaire pour éviter les clics multiples
+      await Future.delayed(const Duration(seconds: 2));
+    } finally {
+      if (mounted) {
+        setState(() { _isProcessing = false; });
+      }
+    }
   }
 }
 

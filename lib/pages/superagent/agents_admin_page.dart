@@ -76,11 +76,11 @@ class _AgentsAdminPageState extends State<AgentsAdminPage> {
             const SizedBox(height: 16),
             const Divider(),
             const SizedBox(height: 8),
-            const Text('Liste des agents'),
+            const Text('Liste des agents et superagents'),
             const SizedBox(height: 8),
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
-                stream: fs.streamAgents(),
+                stream: fs.streamAgentsEtSuperagents(),
                 builder: (context, snapshot) {
                   if (snapshot.hasError) return Center(child: Text('Erreur: ${snapshot.error}'));
                   if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());

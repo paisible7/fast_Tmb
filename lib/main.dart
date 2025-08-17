@@ -22,7 +22,7 @@ import 'package:fast_tmb/pages/agent/statistiques_agent.dart';
 import 'package:fast_tmb/pages/agent/notifications_agent.dart';
 import 'package:fast_tmb/pages/superagent/statistiques_superagent.dart';
 import 'package:fast_tmb/pages/superagent/services_admin_page.dart';
-import 'package:fast_tmb/pages/superagent/agents_admin_page.dart';
+// import 'package:fast_tmb/pages/superagent/agents_admin_page.dart'; // Désactivé provisoirement
 import 'package:fast_tmb/pages/superagent/horaires_admin_page.dart';
 import 'package:fast_tmb/pages/inscription_page.dart';
 import 'package:fast_tmb/pages/public/sans_smartphone_page.dart';
@@ -107,7 +107,7 @@ class FastApp extends StatelessWidget {
           '/statistiques_agent': (_) => const StatistiquesAgentPage(),
           '/statistiques_superagent': (_) => const StatistiquesSuperAgentPage(),
           '/admin_services': (_) => const ServicesAdminPage(),
-          '/admin_agents': (_) => const AgentsAdminPage(),
+          // '/admin_agents': (_) => const AgentsAdminPage(), // Désactivé provisoirement
           '/admin_horaires': (_) => const HorairesAdminPage(),
           '/sans_smartphone': (_) => const SansSmartphonePage(),
         },
