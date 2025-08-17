@@ -19,7 +19,7 @@ import 'package:fast_tmb/pages/client/satisfaction_page.dart';
 import 'package:fast_tmb/pages/connexion_page.dart';
 import 'package:fast_tmb/pages/agent/tableau_bord_agent.dart';
 import 'package:fast_tmb/pages/agent/statistiques_agent.dart';
-import 'package:fast_tmb/pages/agent/notifications_agent.dart';
+// import 'package:fast_tmb/pages/agent/notifications_agent.dart'; // Désactivé (écran notifications agent)
 import 'package:fast_tmb/pages/superagent/statistiques_superagent.dart';
 import 'package:fast_tmb/pages/superagent/services_admin_page.dart';
 // import 'package:fast_tmb/pages/superagent/agents_admin_page.dart'; // Désactivé provisoirement
@@ -103,7 +103,7 @@ class FastApp extends StatelessWidget {
           '/connexion': (_) => const ConnexionPage(),
           '/inscription': (_) => const InscriptionPage(),
           '/tableau_bord_agent': (_) => const TableauBordAgentPage(),
-          '/notifications_agent': (_) => const NotificationsAgentPage(),
+          // '/notifications_agent': (_) => const NotificationsAgentPage(), // Désactivé (écran notifications agent)
           '/statistiques_agent': (_) => const StatistiquesAgentPage(),
           '/statistiques_superagent': (_) => const StatistiquesSuperAgentPage(),
           '/admin_services': (_) => const ServicesAdminPage(),

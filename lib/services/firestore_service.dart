@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+  import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fast_tmb/services/horaires_service.dart';
 import 'package:flutter/foundation.dart';
@@ -6,6 +6,16 @@ import 'package:flutter/foundation.dart';
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  // ---- LOGGING ERREURS ----
+  void _logError(String context, Object e, StackTrace st) {
+    if (e is FirebaseException) {
+      print('[FirestoreService][ERROR][' + context + '] code=' + e.code + ' message=' + (e.message ?? ''));
+    } else {
+      print('[FirestoreService][ERROR][' + context + '] ' + e.toString());
+    }
+    print(st.toString());
+  }
 
   late final CollectionReference _ticketsCollection = _db.collection('tickets');
   late final CollectionReference _servicesCol = _db.collection('services');
@@ -517,30 +527,35 @@ class FirestoreService {
     final now = DateTime.now();
     final from = now.subtract(Duration(days: jours));
     // On calcule la moyenne sur les tickets servis par cet agent avec une satisfaction renseignée
-    var q = _ticketsCollection
-        .where('agentId', isEqualTo: agentId)
-        .where('treatedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(from))
-        .where('satisfactionScore', isGreaterThan: 0);
-    // Compatibilité: certains environnements utilisent encore 'termine'
-    // Firestore ne supporte pas deux where sur le même champ avec whereIn ET autre filtre,
-    // on filtre le status après coup si nécessaire
-    final snap = await q.get();
-    if (snap.docs.isEmpty) return 0.0;
-    int total = 0;
-    int count = 0;
-    for (final d in snap.docs) {
-      final data = d.data() as Map<String, dynamic>;
-      final status = data['status'] as String?;
-      if (status == 'servi' || status == 'termine') {
-        final score = data['satisfactionScore'] as int? ?? 0;
-        if (score > 0) {
-          total += score;
-          count++;
+    try {
+      var q = _ticketsCollection
+          .where('agentId', isEqualTo: agentId)
+          .where('treatedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(from))
+          .where('satisfactionScore', isGreaterThan: 0);
+      // Compatibilité: certains environnements utilisent encore 'termine'
+      // Firestore ne supporte pas deux where sur le même champ avec whereIn ET autre filtre,
+      // on filtre le status après coup si nécessaire
+      final snap = await q.get();
+      if (snap.docs.isEmpty) return 0.0;
+      int total = 0;
+      int count = 0;
+      for (final d in snap.docs) {
+        final data = d.data() as Map<String, dynamic>;
+        final status = data['status'] as String?;
+        if (status == 'servi' || status == 'termine') {
+          final score = data['satisfactionScore'] as int? ?? 0;
+          if (score > 0) {
+            total += score;
+            count++;
+          }
         }
       }
+      if (count == 0) return 0.0;
+      return total / count;
+    } catch (e, st) {
+      _logError('calculerSatisfactionMoyenneAgent', e, st);
+      rethrow;
     }
-    if (count == 0) return 0.0;
-    return total / count;
   }
 
   /// Compte le nombre d'évaluations de service sur une période
@@ -548,53 +563,83 @@ class FirestoreService {
     if (agentId == null) return compterTicketsAvecSatisfactionGlobal(jours: jours);
     final now = DateTime.now();
     final from = now.subtract(Duration(days: jours));
-    var q = _ticketsCollection
-        .where('agentId', isEqualTo: agentId)
-        .where('treatedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(from))
-        .where('satisfactionScore', isGreaterThan: 0);
-    final snap = await q.get();
-    if (snap.docs.isEmpty) return 0;
-    int count = 0;
-    for (final d in snap.docs) {
-      final data = d.data() as Map<String, dynamic>;
-      final status = data['status'] as String?;
-      if ((status == 'servi' || status == 'termine') && (data['satisfactionScore'] as int? ?? 0) > 0) {
-        count++;
+    try {
+      var q = _ticketsCollection
+          .where('agentId', isEqualTo: agentId)
+          .where('treatedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(from))
+          .where('satisfactionScore', isGreaterThan: 0);
+      final snap = await q.get();
+      if (snap.docs.isEmpty) return 0;
+      int count = 0;
+      for (final d in snap.docs) {
+        final data = d.data() as Map<String, dynamic>;
+        final status = data['status'] as String?;
+        if ((status == 'servi' || status == 'termine') && (data['satisfactionScore'] as int? ?? 0) > 0) {
+          count++;
+        }
       }
+      return count;
+    } catch (e, st) {
+      _logError('compterTicketsAvecSatisfactionAgent', e, st);
+      rethrow;
     }
-    return count;
   }
 
-  /// Calcule le score moyen des évaluations de service sur une période
+  /// Calcule le score moyen global à partir des tickets (satisfactionScore) sur une période
   Future<double> calculerSatisfactionMoyenneGlobale({int jours = 7}) async {
     final now = DateTime.now();
     final from = now.subtract(Duration(days: jours));
-    
-    final snap = await _db.collection('evaluations_service')
-        .where('dateEvaluation', isGreaterThanOrEqualTo: Timestamp.fromDate(from))
-        .get();
-    
-    if (snap.docs.isEmpty) return 0.0;
-    
-    int totalScore = 0;
-    for (final doc in snap.docs) {
-      final data = doc.data() as Map<String, dynamic>;
-      totalScore += (data['score'] as int? ?? 0);
+    try {
+      final snap = await _ticketsCollection
+          .where('treatedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(from))
+          .where('satisfactionScore', isGreaterThan: 0)
+          .get();
+      if (snap.docs.isEmpty) return 0.0;
+      int total = 0;
+      int count = 0;
+      for (final d in snap.docs) {
+        final data = d.data() as Map<String, dynamic>;
+        final status = data['status'] as String?;
+        if (status == 'servi' || status == 'termine') {
+          final score = data['satisfactionScore'] as int? ?? 0;
+          if (score > 0) {
+            total += score;
+            count++;
+          }
+        }
+      }
+      if (count == 0) return 0.0;
+      return total / count;
+    } catch (e, st) {
+      _logError('calculerSatisfactionMoyenneGlobale', e, st);
+      rethrow;
     }
-    
-    return totalScore / snap.docs.length;
   }
 
-  /// Compte le nombre total d'évaluations de service
+  /// Compte le nombre de tickets avec satisfaction (>0) sur la période
   Future<int> compterTicketsAvecSatisfactionGlobal({int jours = 7}) async {
     final now = DateTime.now();
     final from = now.subtract(Duration(days: jours));
-    
-    final snap = await _db.collection('evaluations_service')
-        .where('dateEvaluation', isGreaterThanOrEqualTo: Timestamp.fromDate(from))
-        .get();
-    
-    return snap.docs.length;
+    try {
+      final snap = await _ticketsCollection
+          .where('treatedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(from))
+          .where('satisfactionScore', isGreaterThan: 0)
+          .get();
+      if (snap.docs.isEmpty) return 0;
+      int count = 0;
+      for (final d in snap.docs) {
+        final data = d.data() as Map<String, dynamic>;
+        final status = data['status'] as String?;
+        final score = data['satisfactionScore'] as int? ?? 0;
+        if ((status == 'servi' || status == 'termine') && score > 0) {
+          count++;
+        }
+      }
+      return count;
+    } catch (e, st) {
+      _logError('compterTicketsAvecSatisfactionGlobal', e, st);
+      rethrow;
+    }
   }
 
   /// Calcule la distribution des scores d'évaluation de service (1-5 étoiles)
@@ -988,6 +1033,24 @@ class FirestoreService {
     await _servicesCol.doc(serviceId).update({'actif': actif});
   }
 
+  Future<void> renommerService(String serviceId, String nouveauNom) async {
+    try {
+      await _servicesCol.doc(serviceId).update({'nom': nouveauNom});
+    } catch (e, st) {
+      _logError('renommerService('+serviceId+')', e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> supprimerService(String serviceId) async {
+    try {
+      await _servicesCol.doc(serviceId).delete();
+    } catch (e, st) {
+      _logError('supprimerService('+serviceId+')', e, st);
+      rethrow;
+    }
+  }
+
   // Guichets
   Stream<QuerySnapshot> streamGuichets({String? serviceId}) {
     Query q = _guichetsCol;
@@ -1057,7 +1120,8 @@ class FirestoreService {
     return snap.docs
         .map((d) => {
               'id': d.id,
-              'email': (d.data()['email'] as String?) ?? (d.data()['uid'] as String?)
+              'email': (d.data()['email'] as String?) ?? (d.data()['uid'] as String?),
+              'role': d.data()['role'] as String?
             })
         .toList();
   }
@@ -1070,27 +1134,36 @@ class FirestoreService {
     String? queueType,
     String? agentId,
   }) async {
-    String dateField;
-    switch (status) {
-      case 'termine':
-        dateField = 'treatedAt';
-        break;
-      case 'absent':
-        dateField = 'absentAt';
-        break;
-      case 'annule':
-        dateField = 'cancelledAt';
-        break;
-      default:
-        dateField = 'createdAt';
+    try {
+      String dateField;
+      switch (status) {
+        case 'servi':
+          dateField = 'treatedAt';
+          break;
+        case 'termine':
+          dateField = 'treatedAt';
+          break;
+        case 'absent':
+          dateField = 'absentAt';
+          break;
+        case 'annule':
+          dateField = 'cancelledAt';
+          break;
+        default:
+          dateField = 'createdAt';
+      }
+      Query q = _ticketsCollection
+          .where('status', isEqualTo: status)
+          .where(dateField, isGreaterThanOrEqualTo: Timestamp.fromDate(from));
+      q = q.where(dateField, isLessThanOrEqualTo: Timestamp.fromDate(to));
+      if (queueType != null) q = q.where('queueType', isEqualTo: queueType);
+      if (agentId != null) q = q.where('agentId', isEqualTo: agentId);
+      final snap = await q.get();
+      return snap.docs.length;
+    } catch (e, st) {
+      _logError('compterParPeriode(status='+status+', queueType='+ (queueType??'null') +', agentId='+ (agentId??'null') +')', e, st);
+      rethrow;
     }
-    Query q = _ticketsCollection.where('status', isEqualTo: status).where(
-        dateField, isGreaterThanOrEqualTo: Timestamp.fromDate(from));
-    q = q.where(dateField, isLessThanOrEqualTo: Timestamp.fromDate(to));
-    if (queueType != null) q = q.where('queueType', isEqualTo: queueType);
-    if (agentId != null) q = q.where('agentId', isEqualTo: agentId);
-    final snap = await q.get();
-    return snap.docs.length;
   }
 
   /// Temps moyen de traitement (en minutes) avec filtres optionnels

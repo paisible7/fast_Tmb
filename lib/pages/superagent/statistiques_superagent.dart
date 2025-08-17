@@ -50,7 +50,8 @@ class _StatistiquesSuperAgentPageState extends State<StatistiquesSuperAgentPage>
       final fs = Provider.of<FirestoreService>(context, listen: false);
       // Charger la liste des agents au premier chargement
       if (_agents.isEmpty) {
-        _agents = await fs.listerAgentsEtSuperagents();
+        // Charger uniquement les AGENTS dans le filtre
+        _agents = await fs.listerAgents();
       }
       await _chargerStats();
     } catch (e) {

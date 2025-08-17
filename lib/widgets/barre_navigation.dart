@@ -19,8 +19,8 @@ class BarreNavigation extends StatelessWidget {
     // Définir les routes pour chaque rôle
     final Map<String, int> agentRoutes = const {
       '/tableau_bord_agent': 0,
-      '/notifications_agent': 1,
-      '/parametres': 2,
+      // '/notifications_agent': 1, // Désactivé
+      '/parametres': 1,
     };
     final Map<String, int> clientRoutes = const {
       '/accueil': 0,
@@ -63,7 +63,7 @@ class BarreNavigation extends StatelessWidget {
     } else if (userRole == 'agent') {
       items = [
         const BottomNavigationBarItem(icon: Icon(Icons.work_history_outlined), label: 'En cours'),
-        const BottomNavigationBarItem(icon: Icon(Icons.notifications_outlined), label: 'Notif'),
+        // const BottomNavigationBarItem(icon: Icon(Icons.notifications_outlined), label: 'Notif'), // Désactivé
         const BottomNavigationBarItem(icon: Icon(Icons.settings_outlined), label: 'Param'),
       ];
       currentIndex = agentRoutes[currentRoute] ?? 0;

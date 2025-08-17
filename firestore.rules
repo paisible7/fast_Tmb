@@ -46,10 +46,10 @@ service cloud.firestore {
       match /notifications/{docId} {
         // Le propriétaire peut tout lire/écrire sur ses notifications
         allow read: if isSignedIn() && request.auth.uid == userId;
-        // Création PAR LE PROPRIÉTAIRE UNIQUEMENT
-        // NOTE: Création par agent/superagent désactivée (mise en commentaire volontaire)
-        // Ancien comportement: request.auth.uid == userId || isAgent() || isSuperAgent()
-        allow create: if isSignedIn() && request.auth.uid == userId;
+        // Création autorisée également aux agents/superagents (pour notifier les clients)
+        allow create: if isSignedIn() && (
+          request.auth.uid == userId || isAgent() || isSuperAgent()
+        );
         // Mise à jour/suppression réservées au propriétaire
         allow update, delete: if isSignedIn() && request.auth.uid == userId;
       }
@@ -153,8 +153,10 @@ service cloud.firestore {
     match /evaluations_service/{evalId} {
       // Clients peuvent créer leurs propres évaluations
       allow create: if isSignedIn() && request.resource.data.clientId == request.auth.uid;
-      // Lecture pour agents/superagents (pour statistiques)
-      allow read: if isSignedIn() && (isAgent() || isSuperAgent());
+      // Lecture: agents/superagents pour stats ET client propriétaire pour sa propre vue
+      allow read: if isSignedIn() && (
+        isAgent() || isSuperAgent() || resource.data.clientId == request.auth.uid
+      );
       // Pas de modification/suppression une fois créée
     }
 
