@@ -15,6 +15,21 @@ class ServicesAdminPage extends StatefulWidget {
 class _ServicesAdminPageState extends State<ServicesAdminPage> {
   final _nomCtrl = TextEditingController();
   bool _loading = false;
+  bool _seeded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Sème les services de base si manquants (dépôt, retrait)
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!_seeded && mounted) {
+        try {
+          await context.read<FirestoreService>().ensureBuiltinServicesIfMissing();
+        } catch (_) {}
+        if (mounted) setState(() { _seeded = true; });
+      }
+    });
+  }
 
   @override
   void dispose() {

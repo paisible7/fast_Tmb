@@ -1051,6 +1051,27 @@ class FirestoreService {
     }
   }
 
+  Future<void> ensureBuiltinServicesIfMissing() async {
+    try {
+      final ids = ['depot', 'retrait'];
+      for (final id in ids) {
+        final doc = await _servicesCol.doc(id).get();
+        if (!doc.exists) {
+          final nom = id == 'depot' ? 'Dépôt' : 'Retrait';
+          await _servicesCol.doc(id).set({
+            'nom': nom,
+            'actif': true,
+            'createdAt': DateTime.now(),
+            'createdAtServer': FieldValue.serverTimestamp(),
+          });
+        }
+      }
+    } catch (e, st) {
+      _logError('ensureBuiltinServicesIfMissing', e, st);
+      rethrow;
+    }
+  }
+
   // Guichets
   Stream<QuerySnapshot> streamGuichets({String? serviceId}) {
     Query q = _guichetsCol;
