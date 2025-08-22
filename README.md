@@ -26,7 +26,6 @@
 ### 📖 Guides disponibles
 - **[Documentation complète](DOCUMENTATION_COMPLETE.md)** - Architecture technique, modèles de données, services
 - **[Manuel d'utilisation](MANUEL_UTILISATION.md)** - Guide utilisateur pour clients, agents et superagents
-- **[Horaires dynamiques](HORAIRES_DYNAMIQUES.md)** - Configuration du système d'horaires
 
 ### 🏗️ Architecture
 - **Framework** : Flutter (SDK ^3.7.2)
