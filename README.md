@@ -43,7 +43,7 @@
 ### Installation
 ```bash
 # Cloner le projet
-git clone <repository-url>
+git clone https://github.com/paisible7/fast_Tmb.git
 cd fl
 
 # Installer les dépendances
