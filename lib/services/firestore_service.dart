@@ -259,10 +259,10 @@ class FirestoreService {
   Future<void> ajouterTicketAvecService(String queueType) async {
     final user = _auth.currentUser;
     if (user == null) throw Exception('Utilisateur non connecté');
-    // Validation stricte du type de file
+    // Validation: accepter tout service non vide (dynamique)
     final qt = queueType.trim().toLowerCase();
-    if (qt.isEmpty || (qt != 'depot' && qt != 'retrait')) {
-      throw Exception("Type de service invalide. Veuillez choisir 'depot' ou 'retrait'.");
+    if (qt.isEmpty) {
+      throw Exception('Type de service invalide.');
     }
     // Vérification: ne pas dépasser l'heure de fermeture (inclut la vérification des horaires d'ouverture)
     await _verifierAvantFermeture(qt);
@@ -318,10 +318,10 @@ class FirestoreService {
     final user = _auth.currentUser;
     if (user == null) throw Exception('Utilisateur non connecté');
     
-    // Validation stricte du type de file
+    // Validation: accepter tout service non vide (dynamique)
     final qt = queueType.trim().toLowerCase();
-    if (qt.isEmpty || (qt != 'depot' && qt != 'retrait')) {
-      throw Exception("Type de service invalide. Veuillez choisir 'depot' ou 'retrait'.");
+    if (qt.isEmpty) {
+      throw Exception('Type de service invalide.');
     }
     
     // Validation des champs obligatoires

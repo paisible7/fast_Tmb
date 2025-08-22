@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fast_tmb/services/firestore_service.dart';
+import 'package:fast_tmb/services/export_service.dart';
 import 'package:fast_tmb/widgets/barre_navigation.dart';
 import 'package:fast_tmb/utils/constantes_couleurs.dart';
 import 'package:fast_tmb/utils/time_format.dart';
@@ -104,7 +105,12 @@ class _StatistiquesSuperAgentPageState extends State<StatistiquesSuperAgentPage>
             tooltip: 'Rafraîchir',
             onPressed: _loading ? null : _chargerStats,
             icon: const Icon(Icons.refresh),
-          )
+          ),
+          IconButton(
+            tooltip: 'Exporter PDF',
+            onPressed: _loading ? null : _exporterPdf,
+            icon: const Icon(Icons.picture_as_pdf),
+          ),
         ],
       ),
       bottomNavigationBar: BarreNavigation(),
@@ -169,6 +175,12 @@ class _StatistiquesSuperAgentPageState extends State<StatistiquesSuperAgentPage>
                                     await _chargerStats();
                                   },
                                 ),
+                                // Export visible dans le corps
+                                ElevatedButton.icon(
+                                  onPressed: _loading ? null : _exporterPdf,
+                                  icon: const Icon(Icons.picture_as_pdf),
+                                  label: const Text('Exporter PDF'),
+                                ),
                               ],
                             ),
                           ],
@@ -209,6 +221,64 @@ class _StatistiquesSuperAgentPageState extends State<StatistiquesSuperAgentPage>
       ),
     ),
     );
+  }
+
+  Future<void> _exporterPdf() async {
+    try {
+      final exporter = ExportService();
+      final now = DateTime.now();
+      final from = now.subtract(Duration(days: _periodeJours));
+
+      // Synthèse basée sur les valeurs déjà affichées
+      final summary = {
+        'servi': _termine,
+        'absent': _absent,
+        'annule': _annule,
+        'avgWait': formatMinutesDouble(_avgAttente),
+        'avgTrait': formatMinutesDouble(_avgTraitement),
+      };
+
+      // Détails par service (facultatif): si un service est sélectionné
+      final perService = <Map<String, dynamic>>[];
+      if (_queueType != null) {
+        String label;
+        switch (_queueType) {
+          case 'depot': label = 'Dépôt'; break;
+          case 'retrait': label = 'Retrait'; break;
+          default: label = _queueType!; // autre service dynamique => id
+        }
+        perService.add({
+          'service': label,
+          'servi': _termine,
+          'absent': _absent,
+          'annule': _annule,
+          'avgWait': formatMinutesDouble(_avgAttente),
+          'avgTrait': formatMinutesDouble(_avgTraitement),
+        });
+      }
+
+      final title = 'Stats Superagent (${_periodeJours}j' +
+          (_agentId != null ? ' · agent' : '') +
+          (_queueType != null ? ' · service' : '') + ')';
+
+      final path = await exporter.exportStatsPDF(
+        title: title,
+        summary: summary,
+        perService: perService.isEmpty ? null : perService,
+        from: from,
+        to: now,
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('PDF exporté: $path')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur export PDF: $e'), backgroundColor: Colors.red),
+      );
+    }
   }
 
   Widget _resumeCard() {

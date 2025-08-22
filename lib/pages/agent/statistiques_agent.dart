@@ -107,7 +107,7 @@ class _StatistiquesAgentPageState extends State<StatistiquesAgentPage> {
             tooltip: 'Rafraîchir',
             onPressed: _loading ? null : _chargerStats,
             icon: const Icon(Icons.refresh),
-          )
+          ),
         ],
       ),
       bottomNavigationBar: BarreNavigation(),
